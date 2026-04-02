@@ -1,0 +1,35 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "sensor-readings": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "serviceData": {
+      "sites": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "sensors": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "serviceEvents": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "zones": {
+        ".read": "auth != null",
+        "$zoneId": {
+          ".write": "auth != null",
+          ".validate": "!newData.exists() || (newData.hasChild('siteId') && newData.child('siteId').isString() && newData.hasChild('name') && newData.hasChild('color'))"
+        }
+      }
+    }
+  }
+}

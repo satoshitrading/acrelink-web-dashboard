@@ -1,0 +1,207 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Industrial neutral backgrounds */
+    --background: 40 10% 97%;
+    --foreground: 30 8% 15%;
+    
+    /* AcreLink olive green - primary brand color */
+    --primary: 75 35% 35%;
+    --primary-foreground: 40 10% 98%;
+    
+    /* Golden beige - secondary brand color */
+    --secondary: 40 35% 75%;
+    --secondary-foreground: 30 8% 15%;
+    
+    /* Warm golden accent */
+    --accent: 45 85% 55%;
+    --accent-foreground: 30 8% 15%;
+    
+    /* Card and UI surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 30 8% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 8% 15%;
+    
+    /* Muted elements */
+    --muted: 40 10% 93%;
+    --muted-foreground: 30 6% 45%;
+    
+    /* Borders and inputs */
+    --border: 40 15% 85%;
+    --input: 40 15% 85%;
+    --ring: 75 35% 35%;
+    
+    /* Destructive states */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    /* Chart colors - earth tones */
+    --chart-1: 75 35% 45%;
+    --chart-2: 45 85% 55%;
+    --chart-3: 140 35% 45%;
+    
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark industrial backgrounds */
+    --background: 30 8% 12%;
+    --foreground: 40 10% 95%;
+    
+    /* AcreLink olive green - adjusted for dark mode */
+    --primary: 75 40% 45%;
+    --primary-foreground: 40 10% 98%;
+    
+    /* Golden beige - adjusted for dark mode */
+    --secondary: 40 25% 25%;
+    --secondary-foreground: 40 10% 95%;
+    
+    /* Warm golden accent - brighter in dark mode */
+    --accent: 45 80% 60%;
+    --accent-foreground: 30 8% 12%;
+    
+    /* Dark mode card surfaces */
+    --card: 30 8% 15%;
+    --card-foreground: 40 10% 95%;
+    --popover: 30 8% 15%;
+    --popover-foreground: 40 10% 95%;
+    
+    /* Dark mode muted elements */
+    --muted: 30 8% 20%;
+    --muted-foreground: 40 8% 65%;
+    
+    /* Dark mode borders */
+    --border: 30 8% 25%;
+    --input: 30 8% 25%;
+    --ring: 75 40% 45%;
+    
+    /* Destructive states */
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+    
+    /* Chart colors - adjusted for dark mode */
+    --chart-1: 75 40% 50%;
+    --chart-2: 45 80% 60%;
+    --chart-3: 140 40% 50%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer utilities {
+  .shadow-industrial {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+  
+  .shadow-industrial-lg {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
+  }
+  
+  .gradient-overlay {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.05), hsl(var(--accent) / 0.05));
+  }
+  
+  .gradient-hero {
+    background: linear-gradient(135deg, hsl(var(--background)), hsl(var(--muted)));
+  }
+  
+  .hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  }
+  
+  .hover-glow:hover {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+}
+
+
+
+@media(max-width:600px) {
+  
+.main-content-section {
+    padding: 16px !important;
+}
+
+.main-content-p0 {
+    padding: 0px !important;
+}
+
+.mob-wrap{
+flex-wrap: wrap !important;
+
+}
+
+}
+
+@media(max-width:500px) {
+
+
+.depth-font {
+  font-size: 12px !important; 
+  display: grid;
+
+
+}
+}
+
+
+@media(max-width:400px) {
+.btn-style{
+  padding: 10px 12px !important;
+  font-size: 12px !important ;
+  flex-wrap: wrap-reverse;
+        height: auto;
+}
+
+.sensor-mob{
+  flex-wrap: wrap !important;
+  gap: 20px;
+  justify-content: center;
+}
+
+
+}
