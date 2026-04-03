@@ -102,6 +102,7 @@ const Service: React.FC = () => {
         const t = searchTerm.toLowerCase();
         return (
           s.id.toLowerCase().includes(t) ||
+          (s.name ?? "").toLowerCase().includes(t) ||
           (s.label ?? "").toLowerCase().includes(t)
         );
       })
@@ -398,9 +399,9 @@ const Service: React.FC = () => {
                                 <div className="flex-1 min-w-0">
                                   <div className="font-semibold text-md truncate">
                                     {s.id}
-                                    {s.label && (
+                                    {(s.name ?? s.label) && (
                                       <span className="ml-2 text-sm font-normal text-muted-foreground">
-                                        {s.label}
+                                        {s.name ?? s.label}
                                       </span>
                                     )}
                                   </div>
@@ -566,6 +567,29 @@ const Service: React.FC = () => {
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Enter the node MAC address or scan the QR inside the enclosure.
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-semibold">Display name</Label>
+                  <Input
+                    className="mt-2 bg-white text-sm"
+                    placeholder="e.g. North row · sensor 1"
+                    value={editingSensor.name ?? ""}
+                    onChange={(e) =>
+                      setEditingSensor((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              name: e.target.value,
+                              nameManual: true,
+                            }
+                          : prev
+                      )
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Optional. Zone assignment can auto-fill this unless you edit it here.
                   </p>
                 </div>
 

@@ -12,7 +12,7 @@
  * ── DB READ/WRITE (new parallel branch) ──────────────────────────────────────
  *   serviceData/
  *     sites/{siteId}/            { name, info }
- *     sensors/{nodeId}/          { depth, gps, status, notes, installDate, siteId, label }
+ *     sensors/{nodeId}/          { depth, gps, status, notes, installDate, siteId, label, name, nameManual }
  *     serviceEvents/{pushId}/    { techName, nodeIds[], remarks, timestamp, siteId }
  *
  * ── Role-based access (matches Dashboard.tsx) ────────────────────────────────
@@ -31,6 +31,10 @@ export type SensorStatus = "Planned" | "Installed" | "Needs service" | "Offline"
 
 export type SensorMeta = {
   id: string;
+  /** Farmer-facing display name (preferred over legacy `label`). */
+  name?: string;
+  /** When true, zone auto-naming must not overwrite `name`. */
+  nameManual?: boolean;
   label?: string;
   siteId: string;
   depth?: "Shallow (0–6 in)" | "Medium (6–12 in)" | "Deep (12–24 in)";

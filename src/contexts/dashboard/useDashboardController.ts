@@ -19,6 +19,11 @@ import {
   isNodeFilterValue,
   nodeIdFromZoneFilter,
 } from "@/lib/zone-filter-utils";
+import {
+  buildZoneAverageDailySeries,
+  ZONE_AVERAGE_DATA_KEY,
+} from "@/lib/zone-moisture-aggregate";
+import { useSensorDisplayNames } from "@/hooks/useSensorDisplayNames";
 
 const DEFAULT_CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -42,6 +47,9 @@ export function useDashboardController() {
   const [generatingReport, setGeneratingReport] = useState(false);
 
   const [zoneFilter, setZoneFilter] = useState<ZoneFilterValue>("all");
+  const [wholeZoneChartMode, setWholeZoneChartMode] = useState<
+    "nodes" | "zoneAverage"
+  >("nodes");
   const [zonePanelOpen, setZonePanelOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignTargetZoneId, setAssignTargetZoneId] = useState<string | null>(null);
@@ -60,6 +68,8 @@ export function useDashboardController() {
     assignNodesToZone,
     loading: zonesDataLoading,
   } = useZones(userSiteId);
+
+  const sensorDisplayNames = useSensorDisplayNames(userSiteId);
 
   // Fetch user's siteId on mount
   useEffect(() => {
@@ -238,21 +248,61 @@ export function useDashboardController() {
     );
   }, [dailyHistoryByNode, liveMoistureByNode]);
 
-  const chartHistory = useMemo(
-    () =>
-      buildChartHistory(
-        zoneFilter,
-        zones,
-        dailyHistoryMerged,
-        unassignedNodeIds
-      ),
-    [zoneFilter, zones, dailyHistoryMerged, unassignedNodeIds]
-  );
+  const isWholeZoneView =
+    zoneFilter !== "all" &&
+    zoneFilter !== "unassigned" &&
+    !isNodeFilterValue(zoneFilter);
 
-  const chartSeriesKeys = useMemo(
-    () => getChartSeriesKeys(zoneFilter, zones, unassignedNodeIds),
-    [zoneFilter, zones, unassignedNodeIds]
-  );
+  useEffect(() => {
+    if (!isWholeZoneView) {
+      setWholeZoneChartMode("nodes");
+    }
+  }, [zoneFilter, isWholeZoneView]);
+
+  const chartHistory = useMemo(() => {
+    if (isWholeZoneView && wholeZoneChartMode === "zoneAverage") {
+      const z = zones.find((zo) => zo.id === zoneFilter);
+      if (!z) return {};
+      const avgByDate = buildZoneAverageDailySeries(
+        dailyHistoryMerged,
+        z.nodeIds
+      );
+      const out: Record<string, Record<string, number>> = {};
+      for (const dk of Object.keys(dailyHistoryMerged)) {
+        const v = avgByDate[dk];
+        if (v != null) {
+          out[dk] = { [ZONE_AVERAGE_DATA_KEY]: v };
+        }
+      }
+      return out;
+    }
+    return buildChartHistory(
+      zoneFilter,
+      zones,
+      dailyHistoryMerged,
+      unassignedNodeIds
+    );
+  }, [
+    isWholeZoneView,
+    wholeZoneChartMode,
+    zoneFilter,
+    zones,
+    dailyHistoryMerged,
+    unassignedNodeIds,
+  ]);
+
+  const chartSeriesKeys = useMemo(() => {
+    if (isWholeZoneView && wholeZoneChartMode === "zoneAverage") {
+      return [ZONE_AVERAGE_DATA_KEY];
+    }
+    return getChartSeriesKeys(zoneFilter, zones, unassignedNodeIds);
+  }, [
+    isWholeZoneView,
+    wholeZoneChartMode,
+    zoneFilter,
+    zones,
+    unassignedNodeIds,
+  ]);
 
   const filteredNodeIds = useMemo(
     () =>
@@ -287,12 +337,20 @@ export function useDashboardController() {
           nid,
           allNodeReadings[nid],
           zones,
-          userSiteId ?? ""
+          userSiteId ?? "",
+          sensorDisplayNames[nid]
         ),
       ];
     }
     return zoneSummaries.filter((z) => z.id === zoneFilter);
-  }, [zoneFilter, zoneSummaries, allNodeReadings, zones, userSiteId]);
+  }, [
+    zoneFilter,
+    zoneSummaries,
+    allNodeReadings,
+    zones,
+    userSiteId,
+    sensorDisplayNames,
+  ]);
 
   useEffect(() => {
     if (!isNodeFilterValue(zoneFilter)) return;
@@ -636,6 +694,11 @@ export function useDashboardController() {
     };
 
     const getCurrentMoisture = (key: string): number => {
+      if (key === ZONE_AVERAGE_DATA_KEY) {
+        return (
+          zoneSummaries.find((z) => z.id === zoneFilter)?.avgMoisture ?? 0
+        );
+      }
       if (zoneFilter === "all") {
         return zoneSummaries.find((z) => z.id === key)?.avgMoisture ?? 0;
       }
@@ -731,18 +794,27 @@ export function useDashboardController() {
       const twoDaysAgoMoisture = chartHistory[twoDaysAgo]?.[key] ?? null;
       const threeDaysAgoMoisture = chartHistory[threeDaysAgo]?.[key] ?? null;
 
-      const parent = findZoneContainingNode(zones, key);
+      const parent =
+        key === ZONE_AVERAGE_DATA_KEY
+          ? undefined
+          : findZoneContainingNode(zones, key);
+      const shortLabel = sensorDisplayNames[key] ?? key;
       const label =
-        zoneFilter === "all"
-          ? zoneSummaries.find((z) => z.id === key)?.name ?? key
-          : parent
-            ? `${parent.name} · ${key}`
-            : key;
+        key === ZONE_AVERAGE_DATA_KEY
+          ? zoneSummaries.find((z) => z.id === zoneFilter)?.name ?? key
+          : zoneFilter === "all"
+            ? zoneSummaries.find((z) => z.id === key)?.name ?? key
+            : parent
+              ? `${parent.name} · ${shortLabel}`
+              : shortLabel;
 
       const status =
-        zoneFilter === "all"
-          ? zoneSummaries.find((z) => z.id === key)?.status ?? "Optimal"
-          : allNodeReadings[key]?.status ?? "Optimal";
+        key === ZONE_AVERAGE_DATA_KEY
+          ? zoneSummaries.find((z) => z.id === zoneFilter)?.status ??
+            "Optimal"
+          : zoneFilter === "all"
+            ? zoneSummaries.find((z) => z.id === key)?.status ?? "Optimal"
+            : allNodeReadings[key]?.status ?? "Optimal";
 
       const dryingRateYesterday =
         yesterdayMoisture != null && todayMoisture != null
@@ -799,9 +871,16 @@ export function useDashboardController() {
     zoneSummaries,
     allNodeReadings,
     zones,
+    sensorDisplayNames,
   ]);
 
   const getSeriesChartColor = (key: string, idx: number) => {
+    if (key === ZONE_AVERAGE_DATA_KEY) {
+      const selectedZone = zones.find((zo) => zo.id === zoneFilter);
+      return (
+        selectedZone?.color ?? DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length]
+      );
+    }
     if (zoneFilter === "all") {
       const z = zones.find((zo) => zo.id === key);
       return (
@@ -824,6 +903,10 @@ export function useDashboardController() {
   };
 
   const getSeriesChartName = (key: string) => {
+    if (key === ZONE_AVERAGE_DATA_KEY) {
+      const selectedZone = zones.find((zo) => zo.id === zoneFilter);
+      return selectedZone ? `${selectedZone.name} (average)` : key;
+    }
     if (zoneFilter === "all") {
       return zones.find((zo) => zo.id === key)?.name ?? key;
     }
@@ -831,14 +914,16 @@ export function useDashboardController() {
       const nid = nodeIdFromZoneFilter(zoneFilter);
       if (nid && key === nid) {
         const p = findZoneContainingNode(zones, nid);
-        return p ? `${p.name} · ${nid}` : nid;
+        const dn = sensorDisplayNames[nid] ?? nid;
+        return p ? `${p.name} · ${dn}` : dn;
       }
     }
     const p = findZoneContainingNode(zones, key);
     if (p && zoneFilter !== "unassigned") {
-      return `${p.name} · ${key}`;
+      const dn = sensorDisplayNames[key] ?? key;
+      return `${p.name} · ${dn}`;
     }
-    return key;
+    return sensorDisplayNames[key] ?? key;
   };
 
 
@@ -866,6 +951,9 @@ export function useDashboardController() {
     setGeneratingReport,
     zoneFilter,
     setZoneFilter,
+    wholeZoneChartMode,
+    setWholeZoneChartMode,
+    isWholeZoneView,
     zonePanelOpen,
     setZonePanelOpen,
     assignOpen,
@@ -884,6 +972,7 @@ export function useDashboardController() {
     deleteZone,
     assignNodesToZone,
     zonesDataLoading,
+    sensorDisplayNames,
     handleGatewayNamesSaved,
     handleLogout,
     handleAdminSiteChange,

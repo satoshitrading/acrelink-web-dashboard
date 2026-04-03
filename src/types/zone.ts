@@ -31,6 +31,8 @@ export interface NodeReading {
   moisture: number;
   batteryVoltage: number;
   batteryStatus: string;
+  /** 0–100% packet reception over last 7 days (same value as `signal` for charts/alerts). */
+  packetReceptionPercent: number;
   signal: number;
   status: string;
   timestamp: string;

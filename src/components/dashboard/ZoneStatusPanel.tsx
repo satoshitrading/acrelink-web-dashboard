@@ -37,6 +37,7 @@ export function ZoneStatusPanel() {
     zoneSummariesForView,
     setAssignOpen,
     setAssignTargetZoneId,
+    sensorDisplayNames,
   } = useDashboard();
 
   const [zoneGridExpanded, setZoneGridExpanded] = useState(false);
@@ -108,9 +109,12 @@ export function ZoneStatusPanel() {
                     <Card key={nodeId} className={`shadow-industrial border-2 ${colors.border}`}>
                       <div className={`h-1.5 w-full ${colors.bar}`} />
                       <CardContent className="p-5 pt-7">
-                        <h2 className="font-mono text-sm font-bold truncate" title={nodeId}>
-                          {nodeId}
+                        <h2 className="text-sm font-bold truncate" title={nodeId}>
+                          {sensorDisplayNames[nodeId] ?? nodeId}
                         </h2>
+                        <p className="text-xs font-mono text-muted-foreground truncate" title={nodeId}>
+                          {nodeId}
+                        </p>
                         <p className="text-xs text-muted-foreground mt-1">Unassigned</p>
                         <div className="mt-3 space-y-2">
                           <div className="flex justify-between text-sm">
@@ -142,9 +146,12 @@ export function ZoneStatusPanel() {
                   <Card className={`shadow-industrial border-2 ${colors.border}`}>
                     <div className={`h-1.5 w-full ${colors.bar}`} />
                     <CardContent className="p-5 pt-7">
-                      <h2 className="font-mono text-sm font-bold truncate" title={nid}>
-                        {nid}
+                      <h2 className="text-sm font-bold truncate" title={nid}>
+                        {sensorDisplayNames[nid] ?? nid}
                       </h2>
+                      <p className="text-xs font-mono text-muted-foreground truncate" title={nid}>
+                        {nid}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">Single sensor</p>
                       <div className="mt-3 space-y-2">
                         <div className="flex justify-between text-sm">
@@ -159,13 +166,24 @@ export function ZoneStatusPanel() {
                             {getBatteryStatusColor(r.batteryVoltage).status}
                           </span>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Signal</span>
-                          <span
-                            className={`text-xs font-bold px-2 py-0.5 rounded ${getSignalStatusColor(r.signal)} ${getSignalStatusColor(r.signal).text}`}
-                          >
-                            {getSignalStatusColor(r.signal).status}
-                          </span>
+                        <div className="flex justify-between text-sm gap-2">
+                          <span>Link (7d)</span>
+                          {(() => {
+                            const link = getSignalStatusColor(
+                              r.packetReceptionPercent ?? r.signal
+                            );
+                            return (
+                              <span
+                                className={`text-xs font-bold px-2 py-0.5 rounded shrink-0 ${link.badgeBg} ${link.text}`}
+                              >
+                                {link.status} ·{" "}
+                                {Math.round(
+                                  r.packetReceptionPercent ?? r.signal
+                                )}
+                                %
+                              </span>
+                            );
+                          })()}
                         </div>
                         <p className={`text-sm font-semibold pt-2 ${colors.text}`}>{r.status}</p>
                       </div>
@@ -243,15 +261,20 @@ export function ZoneStatusPanel() {
                                 {getBatteryStatusColor(zone.avgBattery).status}
                               </span>
                             </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground flex items-center">
-                                <Signal className="h-3.5 w-3.5 mr-1.5" /> Signal
+                            <div className="flex justify-between items-center gap-2">
+                              <span className="text-sm text-muted-foreground flex items-center shrink-0">
+                                <Signal className="h-3.5 w-3.5 mr-1.5" /> Link (7d)
                               </span>
-                              <span
-                                className={`text-xs font-bold px-2 py-0.5 rounded ${getSignalStatusColor(zone.avgSignal)} ${getSignalStatusColor(zone.avgSignal).text}`}
-                              >
-                                {getSignalStatusColor(zone.avgSignal).status}
-                              </span>
+                              {(() => {
+                                const link = getSignalStatusColor(zone.avgSignal);
+                                return (
+                                  <span
+                                    className={`text-xs font-bold px-2 py-0.5 rounded text-right ${link.badgeBg} ${link.text}`}
+                                  >
+                                    {link.status} · {Math.round(zone.avgSignal)}%
+                                  </span>
+                                );
+                              })()}
                             </div>
                             <div className="pt-3 mt-3 border-t-2 border-border">
                               <p className={`font-display font-bold text-sm flex items-center justify-center ${colors.text}`}>

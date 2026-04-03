@@ -60,7 +60,43 @@ export function getBatteryStatus(batteryV: number): {
 }
 
 /**
- * Convert RSSI (signal strength in dBm) to percentage
+ * Expected uplink packets in a 7-day window at 2-hour field cadence (12/day).
+ */
+export const EXPECTED_PACKETS_7D = 84;
+
+/**
+ * Packet reception rate as 0–100% for dashboard "signal" / link health bands.
+ */
+export function packetReceptionPercentFromCount(received: number): number {
+    if (received <= 0) return 0;
+    const pct = (received / EXPECTED_PACKETS_7D) * 100;
+    return Math.round(Math.min(100, Math.max(0, pct)) * 10) / 10;
+}
+
+/**
+ * Count packets with timestamps in (now − 7d, now], excluding future calendar dates.
+ */
+export function countPacketsReceivedInLast7Days(
+    packets: Record<string, Record<string, unknown>>,
+    realToday: string
+): number {
+    const nowMs = Date.now();
+    const windowStartMs = nowMs - 7 * 24 * 60 * 60 * 1000;
+    let n = 0;
+    for (const packetId in packets) {
+        const rawData = packets[packetId];
+        if (!rawData?.timestamp) continue;
+        const dateKey = String(rawData.timestamp).split("T")[0];
+        if (dateKey > realToday) continue;
+        const ts = new Date(String(rawData.timestamp)).getTime();
+        if (Number.isNaN(ts) || ts <= windowStartMs || ts > nowMs) continue;
+        n++;
+    }
+    return n;
+}
+
+/**
+ * @deprecated Legacy RSSI → pseudo-%; prefer packet reception rate in aggregation.
  */
 export function getSignalPercent(rssi: number): number {
     if (rssi >= -70) return 95;

@@ -38,6 +38,9 @@ export function MoistureTrendsPanel() {
     handleToggleSeries,
     getSeriesChartColor,
     getSeriesChartName,
+    isWholeZoneView,
+    wholeZoneChartMode,
+    setWholeZoneChartMode,
   } = useDashboard();
 
   return (
@@ -115,6 +118,34 @@ export function MoistureTrendsPanel() {
       <CardContent className="main-content-section">
         {chartView === "moisture" && (
           <>
+            {isWholeZoneView && (
+              <div className="flex justify-center mb-4">
+                <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
+                  <Button
+                    type="button"
+                    variant={
+                      wholeZoneChartMode === "nodes" ? "default" : "ghost"
+                    }
+                    size="sm"
+                    className="text-xs rounded-sm"
+                    onClick={() => setWholeZoneChartMode("nodes")}
+                  >
+                    All node lines
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={
+                      wholeZoneChartMode === "zoneAverage" ? "default" : "ghost"
+                    }
+                    size="sm"
+                    className="text-xs rounded-sm"
+                    onClick={() => setWholeZoneChartMode("zoneAverage")}
+                  >
+                    Zone average
+                  </Button>
+                </div>
+              </div>
+            )}
             <ResponsiveContainer width="100%" height={350}>
               <LineChart data={trendTimeRange === "24hr" ? trend24HrData : trend7DayData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />

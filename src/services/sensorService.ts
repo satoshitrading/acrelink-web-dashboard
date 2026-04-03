@@ -1,4 +1,10 @@
-import { getBatteryStatus, getMoisturePercent, getMoistureStatus, getSignalPercent } from "@/lib/dataTransform";
+import {
+    getBatteryStatus,
+    getMoisturePercent,
+    getMoistureStatus,
+    countPacketsReceivedInLast7Days,
+    packetReceptionPercentFromCount,
+} from "@/lib/dataTransform";
 import { database } from "@/lib/firebase";
 import { ref, onValue, get, Unsubscribe } from "firebase/database";
 
@@ -67,6 +73,12 @@ export const fetchGatewayDetail = async (
             let packets = node;
             if (node.packets) packets = node.packets;
 
+            const received7d = countPacketsReceivedInLast7Days(
+                packets as Record<string, Record<string, unknown>>,
+                realToday
+            );
+            const prr = packetReceptionPercentFromCount(received7d);
+
             let latestPacket: PacketData | null = null;
             let latestTimestamp = 0;
 
@@ -80,7 +92,7 @@ export const fetchGatewayDetail = async (
 
                 const moisture = getMoisturePercent(rawData.soil_raw);
                 const batteryInfo = getBatteryStatus(rawData.battery_v);
-                const signal = getSignalPercent(rawData.rssi);
+                const signal = prr;
 
                 const packet: PacketData = {
                     packetId,
@@ -178,6 +190,12 @@ export const subscribeToZones = (
                     let packets = node;
                     if (node.packets) packets = node.packets;
 
+                    const received7d = countPacketsReceivedInLast7Days(
+                        packets as Record<string, Record<string, unknown>>,
+                        realToday
+                    );
+                    const prr = packetReceptionPercentFromCount(received7d);
+
                     let latestPacket: PacketData | null = null;
                     let latestTimestamp = 0;
                     let latestBatteryValue = 0;
@@ -192,7 +210,7 @@ export const subscribeToZones = (
 
                         const moisture = getMoisturePercent(rawData.soil_raw);
                         const batteryInfo = getBatteryStatus(rawData.battery_v);
-                        const signal = getSignalPercent(rawData.rssi);
+                        const signal = prr;
                         const statusInfo = getMoistureStatus(moisture);
 
                         const packet: PacketData = {

@@ -8,7 +8,8 @@ import {
   getBatteryStatus,
   getMoisturePercent,
   getMoistureStatus,
-  getSignalPercent,
+  countPacketsReceivedInLast7Days,
+  packetReceptionPercentFromCount,
 } from "@/lib/dataTransform";
 import type { NodeReading, Zone, ZoneSummary } from "@/types/zone";
 import { ref, onValue, get, Unsubscribe } from "firebase/database";
@@ -92,6 +93,10 @@ function buildLatestReadingForNode(
   const bareId = nodeKey.replace(/^nodeId:/, "");
   const packets = parsePacketsFromNode(node);
 
+  const received7d = countPacketsReceivedInLast7Days(packets, realToday);
+  const packetReceptionPercent = packetReceptionPercentFromCount(received7d);
+  const signal = packetReceptionPercent;
+
   let latestPacket: NodeReading | null = null;
   let latestTimestamp = 0;
 
@@ -107,7 +112,6 @@ function buildLatestReadingForNode(
 
     const moisture = getMoisturePercent(soilRaw);
     const batteryInfo = getBatteryStatus(batteryV);
-    const signal = getSignalPercent(rssi);
     const statusInfo = getMoistureStatus(moisture);
 
     const ts = new Date(String(rawData.timestamp)).getTime();
@@ -119,6 +123,7 @@ function buildLatestReadingForNode(
         moisture,
         batteryVoltage: batteryV,
         batteryStatus: batteryInfo.status,
+        packetReceptionPercent,
         signal,
         status: statusInfo.status,
         timestamp: String(rawData.timestamp),

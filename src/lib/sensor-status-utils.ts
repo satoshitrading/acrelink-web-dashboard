@@ -14,14 +14,14 @@ export const getBatteryStatusColor = (voltage: number) => {
 };
 
 /**
- * Signal strength status thresholds and color mapping utilities
+ * Link health from 7-day packet reception rate (0–100%). Thresholds: GOOD ≥90, FAIR 75–89, POOR 50–74, CRITICAL &lt;50.
  */
-export const getSignalStatusColor = (signal: number) => {
-    if (signal >= 90) {
+export const getSignalStatusColor = (packetReceptionPercent: number) => {
+    if (packetReceptionPercent >= 90) {
         return { status: "GOOD", text: "text-green-600", bg: "bg-green-500/20", badgeBg: "bg-green-200" };
-    } else if (signal >= 75 && signal <= 89) {
+    } else if (packetReceptionPercent >= 75 && packetReceptionPercent <= 89) {
         return { status: "FAIR", text: "text-yellow-600", bg: "bg-yellow-500/20", badgeBg: "bg-yellow-200" };
-    } else if (signal >= 50 && signal <= 74) {
+    } else if (packetReceptionPercent >= 50 && packetReceptionPercent <= 74) {
         return { status: "POOR", text: "text-orange-600", bg: "bg-orange-500/20", badgeBg: "bg-orange-200" };
     } else {
         return { status: "CRITICAL", text: "text-red-600", bg: "bg-red-500/20", badgeBg: "bg-red-200" };

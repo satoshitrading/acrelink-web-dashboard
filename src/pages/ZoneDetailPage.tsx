@@ -7,6 +7,7 @@ import { auth, database } from "@/lib/firebase";
 import { ref, get } from "firebase/database";
 import { getBatteryStatusColor, getSignalStatusColor, getMoistureStatusColors } from "@/lib/sensor-status-utils";
 import { useZones } from "@/hooks/useZones";
+import { useSensorDisplayNames } from "@/hooks/useSensorDisplayNames";
 
 const ZoneDetailPage = () => {
   const { zoneId } = useParams<{ zoneId: string }>();
@@ -51,6 +52,7 @@ const ZoneDetailPage = () => {
   }, [navigate]);
 
   const { zones, allNodeReadings, loading } = useZones(userSiteId);
+  const sensorDisplayNames = useSensorDisplayNames(userSiteId);
 
   const zone = useMemo(
     () => zones.find((z) => z.id === zoneId),
@@ -168,9 +170,14 @@ const ZoneDetailPage = () => {
                     <div className={`absolute top-0 left-0 w-full h-1.5 ${statusColors.bar}`} />
                     <CardContent className="p-5 pt-7">
                       <div className="flex items-start justify-between mb-4">
-                        <h3 className="text-lg font-mono font-bold text-foreground break-all">
-                          NodeID: {nodeId}
-                        </h3>
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-bold text-foreground break-words">
+                            {sensorDisplayNames[nodeId] ?? nodeId}
+                          </h3>
+                          <p className="text-xs font-mono text-muted-foreground break-all mt-0.5">
+                            {nodeId}
+                          </p>
+                        </div>
                         {(isOffline ||
                           (!isOffline &&
                             (packet.status === "Critical: Dry" ||
@@ -217,16 +224,28 @@ const ZoneDetailPage = () => {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-muted-foreground flex items-center">
                             <Signal className="h-3.5 w-3.5 mr-1.5" />
-                            Signal
+                            Link (7d)
                           </span>
                           {isOffline ? (
                             <span className="font-bold text-foreground">—</span>
                           ) : (
-                            <span
-                              className={`text-xs font-bold px-2 py-0.5 rounded ${getSignalStatusColor(packet.signal)} ${getSignalStatusColor(packet.signal).text}`}
-                            >
-                              {getSignalStatusColor(packet.signal).status}
-                            </span>
+                            (() => {
+                              const link = getSignalStatusColor(
+                                packet.packetReceptionPercent ?? packet.signal
+                              );
+                              return (
+                                <span
+                                  className={`text-xs font-bold px-2 py-0.5 rounded ${link.badgeBg} ${link.text}`}
+                                >
+                                  {link.status} ·{" "}
+                                  {Math.round(
+                                    packet.packetReceptionPercent ??
+                                      packet.signal
+                                  )}
+                                  %
+                                </span>
+                              );
+                            })()
                           )}
                         </div>
 

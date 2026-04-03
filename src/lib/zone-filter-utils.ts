@@ -56,13 +56,15 @@ export function buildSingleNodeZoneSummary(
   nodeId: string,
   reading: NodeReading,
   zones: Zone[],
-  siteId: string
+  siteId: string,
+  nodeDisplayName?: string
 ): ZoneSummary {
   const parent = findZoneContainingNode(zones, nodeId);
   const now = new Date().toISOString();
+  const label = nodeDisplayName ?? nodeId;
   return {
     id: nodeId,
-    name: parent ? `${parent.name} · ${nodeId}` : nodeId,
+    name: parent ? `${parent.name} · ${label}` : label,
     color: parent?.color ?? "#6366f1",
     siteId,
     nodeIds: [nodeId],

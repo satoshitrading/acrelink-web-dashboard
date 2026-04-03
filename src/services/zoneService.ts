@@ -12,6 +12,58 @@ import {
 } from "firebase/database";
 
 const ZONES_PATH = "serviceData/zones";
+const SENSORS_PATH = "serviceData/sensors";
+
+/**
+ * After zone membership changes: set sequential `name` on assigned nodes; clear auto `name` on unassigned (same site).
+ * Respects `nameManual` on each sensor document.
+ */
+async function syncSensorDisplayNamesAfterZoneAssign(
+  orderedNodeIds: string[],
+  siteId: string,
+  zoneName: string
+): Promise<void> {
+  const sensorsSnap = await get(ref(database, SENSORS_PATH));
+  const sensorsVal = sensorsSnap.exists()
+    ? (sensorsSnap.val() as Record<string, Record<string, unknown>>)
+    : {};
+
+  const zonesSnap = await get(ref(database, ZONES_PATH));
+  const assigned = new Set<string>();
+  if (zonesSnap.exists()) {
+    const allZ = zonesSnap.val() as Record<
+      string,
+      { siteId?: string; nodeIds?: string[] }
+    >;
+    for (const zval of Object.values(allZ)) {
+      if (zval.siteId !== siteId) continue;
+      const ids = Array.isArray(zval.nodeIds) ? zval.nodeIds : [];
+      ids.forEach((n) => assigned.add(n));
+    }
+  }
+
+  const updates: Record<string, unknown> = {};
+  const now = new Date().toISOString();
+
+  for (let i = 0; i < orderedNodeIds.length; i++) {
+    const nodeId = orderedNodeIds[i];
+    const existing = sensorsVal[nodeId];
+    if (existing && existing.nameManual === true) continue;
+    updates[`${nodeId}/name`] = `${zoneName} - ${i + 1}`;
+    updates[`${nodeId}/siteId`] = siteId;
+    updates[`${nodeId}/updatedAt`] = now;
+  }
+
+  for (const [nid, sval] of Object.entries(sensorsVal)) {
+    if (sval.siteId !== siteId) continue;
+    if (assigned.has(nid)) continue;
+    if (sval.nameManual === true) continue;
+    updates[`${nid}/name`] = null;
+  }
+
+  if (Object.keys(updates).length === 0) return;
+  await update(ref(database, SENSORS_PATH), updates);
+}
 
 export type CreateZoneInput = {
   name: string;
@@ -144,8 +196,14 @@ export async function assignNodesToZone(
     throw new Error("Zone not found");
   }
 
+  const zoneName = String(
+    (zoneSnap.val() as Record<string, unknown>)?.name ?? ""
+  );
+
   updates[`${zoneId}/nodeIds`] = normalized;
   updates[`${zoneId}/updatedAt`] = now;
 
   await update(ref(database, ZONES_PATH), updates);
+
+  await syncSensorDisplayNamesAfterZoneAssign(normalized, siteId, zoneName);
 }
