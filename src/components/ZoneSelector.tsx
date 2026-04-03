@@ -18,6 +18,8 @@ interface ZoneSelectorProps {
   zones: ZoneSummary[];
   /** Nodes with readings that are not in any zone (for single-node picks). */
   unassignedNodeIds: string[];
+  /** Display label per bare node id (e.g. sequential names from serviceData). Defaults to `Node {id}`. */
+  nodeLabel?: (nodeId: string) => string;
   disabled?: boolean;
   className?: string;
 }
@@ -27,9 +29,12 @@ export function ZoneSelector({
   onChange,
   zones,
   unassignedNodeIds,
+  nodeLabel,
   disabled,
   className,
 }: ZoneSelectorProps) {
+  const labelFor = nodeLabel ?? ((id: string) => `Node ${id}`);
+
   return (
     <div className={cn("flex min-w-0 flex-col gap-1", className)}>
       <span className="text-sm font-medium text-muted-foreground">View</span>
@@ -51,7 +56,7 @@ export function ZoneSelector({
               <SelectItem value={z.id}>Whole zone</SelectItem>
               {z.nodeIds.map((nid) => (
                 <SelectItem key={`${z.id}-${nid}`} value={toNodeFilterValue(nid)}>
-                  Node {nid}
+                  {labelFor(nid)}
                 </SelectItem>
               ))}
             </SelectGroup>
@@ -65,7 +70,7 @@ export function ZoneSelector({
                 </SelectLabel>
                 {unassignedNodeIds.map((nid) => (
                   <SelectItem key={`un-${nid}`} value={toNodeFilterValue(nid)}>
-                    Node {nid}
+                    {labelFor(nid)}
                   </SelectItem>
                 ))}
               </SelectGroup>

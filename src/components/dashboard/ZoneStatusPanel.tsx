@@ -78,6 +78,7 @@ export function ZoneStatusPanel() {
                 onChange={setZoneFilter}
                 zones={zoneSummaries}
                 unassignedNodeIds={unassignedNodeIds}
+                nodeLabel={(id) => sensorDisplayNames[id] ?? id}
                 disabled={zoneSectionLoading}
               />
               <Button
@@ -167,7 +168,10 @@ export function ZoneStatusPanel() {
                           </span>
                         </div>
                         <div className="flex justify-between text-sm gap-2">
-                          <span>Link (7d)</span>
+                          <span className="flex items-center gap-1.5">
+                            <Signal className="h-3.5 w-3.5 shrink-0" />
+                            Signal
+                          </span>
                           {(() => {
                             const link = getSignalStatusColor(
                               r.packetReceptionPercent ?? r.signal
@@ -176,11 +180,7 @@ export function ZoneStatusPanel() {
                               <span
                                 className={`text-xs font-bold px-2 py-0.5 rounded shrink-0 ${link.badgeBg} ${link.text}`}
                               >
-                                {link.status} ·{" "}
-                                {Math.round(
-                                  r.packetReceptionPercent ?? r.signal
-                                )}
-                                %
+                                {link.status}
                               </span>
                             );
                           })()}
@@ -263,7 +263,7 @@ export function ZoneStatusPanel() {
                             </div>
                             <div className="flex justify-between items-center gap-2">
                               <span className="text-sm text-muted-foreground flex items-center shrink-0">
-                                <Signal className="h-3.5 w-3.5 mr-1.5" /> Link (7d)
+                                <Signal className="h-3.5 w-3.5 mr-1.5" /> Signal
                               </span>
                               {(() => {
                                 const link = getSignalStatusColor(zone.avgSignal);
@@ -271,7 +271,7 @@ export function ZoneStatusPanel() {
                                   <span
                                     className={`text-xs font-bold px-2 py-0.5 rounded text-right ${link.badgeBg} ${link.text}`}
                                   >
-                                    {link.status} · {Math.round(zone.avgSignal)}%
+                                    {link.status}
                                   </span>
                                 );
                               })()}

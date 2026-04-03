@@ -224,7 +224,7 @@ const ZoneDetailPage = () => {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-muted-foreground flex items-center">
                             <Signal className="h-3.5 w-3.5 mr-1.5" />
-                            Link (7d)
+                            Signal
                           </span>
                           {isOffline ? (
                             <span className="font-bold text-foreground">—</span>
@@ -237,12 +237,7 @@ const ZoneDetailPage = () => {
                                 <span
                                   className={`text-xs font-bold px-2 py-0.5 rounded ${link.badgeBg} ${link.text}`}
                                 >
-                                  {link.status} ·{" "}
-                                  {Math.round(
-                                    packet.packetReceptionPercent ??
-                                      packet.signal
-                                  )}
-                                  %
+                                  {link.status}
                                 </span>
                               );
                             })()
