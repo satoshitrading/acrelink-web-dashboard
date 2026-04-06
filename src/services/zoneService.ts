@@ -73,12 +73,21 @@ export type CreateZoneInput = {
 };
 
 export type UpdateZoneInput = Partial<
-  Pick<Zone, "name" | "color" | "nodeIds">
+  Pick<Zone, "name" | "color" | "nodeIds" | "moistureThresholdVwc">
 >;
 
 function normalizeNodeIds(ids: string[] | undefined): string[] {
   if (!ids?.length) return [];
   return [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+}
+
+function parseOptionalThreshold(
+  raw: unknown
+): number | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 /**
@@ -102,6 +111,9 @@ export function subscribeToSiteZones(
       for (const [id, val] of Object.entries(raw)) {
         if (!val || typeof val !== "object") continue;
         if (val.siteId !== siteId) continue;
+        const moistureThresholdVwc = parseOptionalThreshold(
+          val.moistureThresholdVwc
+        );
         list.push({
           id,
           name: String(val.name ?? ""),
@@ -112,6 +124,9 @@ export function subscribeToSiteZones(
             : [],
           createdAt: String(val.createdAt ?? new Date().toISOString()),
           updatedAt: String(val.updatedAt ?? new Date().toISOString()),
+          ...(moistureThresholdVwc !== undefined
+            ? { moistureThresholdVwc }
+            : {}),
         });
       }
       callback(list);
@@ -154,6 +169,10 @@ export async function updateZone(
   if (updates.color !== undefined) payload.color = updates.color;
   if (updates.nodeIds !== undefined)
     payload.nodeIds = normalizeNodeIds(updates.nodeIds);
+  if (updates.moistureThresholdVwc !== undefined) {
+    const v = updates.moistureThresholdVwc;
+    payload.moistureThresholdVwc = v === null || v === undefined ? null : v;
+  }
 
   await update(zoneRef, payload);
 }
@@ -206,4 +225,16 @@ export async function assignNodesToZone(
   await update(ref(database, ZONES_PATH), updates);
 
   await syncSensorDisplayNamesAfterZoneAssign(normalized, siteId, zoneName);
+}
+
+/** Set per-node moisture alert threshold (VWC %). Pass null to clear. */
+export async function updateSensorMoistureThreshold(
+  nodeId: string,
+  moistureThresholdVwc: number | null
+): Promise<void> {
+  const now = new Date().toISOString();
+  await update(ref(database, `${SENSORS_PATH}/${nodeId}`), {
+    moistureThresholdVwc,
+    updatedAt: now,
+  });
 }

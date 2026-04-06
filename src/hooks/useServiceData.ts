@@ -47,6 +47,8 @@ export type SensorMeta = {
   } | null;
   status?: SensorStatus;
   notes?: string;
+  /** Alert when this node's moisture (VWC %) drops below this value. */
+  moistureThresholdVwc?: number | null;
 };
 
 export type SensorTelemetry = {

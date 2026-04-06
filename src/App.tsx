@@ -14,6 +14,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import ZoneDetailPage from "./pages/ZoneDetailPage";
 import Technicians from "./pages/Technicians";
+import "react-quill/dist/quill.snow.css";
 
 const queryClient = new QueryClient();
 

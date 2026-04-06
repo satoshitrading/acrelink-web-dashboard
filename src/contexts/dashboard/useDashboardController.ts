@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ZoneFilterValue } from "@/types/zone";
 import {
@@ -24,6 +24,8 @@ import {
   ZONE_AVERAGE_DATA_KEY,
 } from "@/lib/zone-moisture-aggregate";
 import { useSensorDisplayNames } from "@/hooks/useSensorDisplayNames";
+import { useSiteSensorThresholds } from "@/hooks/useSiteSensorThresholds";
+import { useToast } from "@/hooks/use-toast";
 
 const DEFAULT_CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -45,6 +47,7 @@ export function useDashboardController() {
   const [seasonStart, setSeasonStart] = useState("");
   const [seasonEnd, setSeasonEnd] = useState("");
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [showSmsOptInModal, setShowSmsOptInModal] = useState(false);
 
   const [zoneFilter, setZoneFilter] = useState<ZoneFilterValue>("all");
   const [wholeZoneChartMode, setWholeZoneChartMode] = useState<
@@ -70,6 +73,9 @@ export function useDashboardController() {
   } = useZones(userSiteId);
 
   const sensorDisplayNames = useSensorDisplayNames(userSiteId);
+  const sensorMoistureThresholds = useSiteSensorThresholds(userSiteId);
+  const { toast } = useToast();
+  const breachToastKeysRef = useRef<Set<string>>(new Set());
 
   // Fetch user's siteId on mount
   useEffect(() => {
@@ -163,6 +169,22 @@ export function useDashboardController() {
 
     checkGatewayNames();
   }, [userSiteId, userRole]);
+
+  useEffect(() => {
+    const promptSms = async () => {
+      if (userRole !== "customer" || !userSiteId) return;
+      if (localStorage.getItem("acrelinkSmsPromptDismissed") === "1") return;
+      const user = auth.currentUser;
+      if (!user) return;
+      const snap = await get(ref(database, `users/${user.uid}`));
+      if (!snap.exists()) return;
+      const d = snap.val() as Record<string, unknown>;
+      if (d.phone && String(d.phone).trim().length > 0) return;
+      if (d.smsOptIn === true) return;
+      setShowSmsOptInModal(true);
+    };
+    promptSms();
+  }, [userRole, userSiteId]);
 
   const handleGatewayNamesSaved = () => {
     setShowGatewayModal(false);
@@ -874,6 +896,53 @@ export function useDashboardController() {
     sensorDisplayNames,
   ]);
 
+  /* eslint-disable react-hooks/exhaustive-deps -- toast stable; avoid re-firing */
+  useEffect(() => {
+    if (!userSiteId) return;
+    const active = new Set<string>();
+    for (const z of zoneSummaries) {
+      const th = z.moistureThresholdVwc;
+      if (th == null || Number.isNaN(Number(th))) continue;
+      if (z.avgMoisture < th) active.add(`zone:${z.id}`);
+    }
+    for (const [nid, r] of Object.entries(allNodeReadings)) {
+      const th = sensorMoistureThresholds[nid];
+      if (th == null || Number.isNaN(Number(th))) continue;
+      if (r.online && r.moisture < th) active.add(`node:${nid}`);
+    }
+    for (const key of active) {
+      if (breachToastKeysRef.current.has(key)) continue;
+      breachToastKeysRef.current.add(key);
+      const colon = key.indexOf(":");
+      const kind = key.slice(0, colon);
+      const id = key.slice(colon + 1);
+      if (kind === "zone") {
+        const z = zoneSummaries.find((zz) => zz.id === id);
+        toast({
+          title: "Moisture below zone threshold",
+          description: z
+            ? `${z.name} average (${z.avgMoisture}% VWC) is below your ${z.moistureThresholdVwc}% alert level.`
+            : "Zone moisture is below your threshold.",
+        });
+      } else {
+        toast({
+          title: "Moisture below node threshold",
+          description: `${sensorDisplayNames[id] ?? id} is below your alert level.`,
+        });
+      }
+    }
+    for (const k of [...breachToastKeysRef.current]) {
+      if (!active.has(k)) breachToastKeysRef.current.delete(k);
+    }
+  }, [
+    userSiteId,
+    zoneSummaries,
+    allNodeReadings,
+    sensorMoistureThresholds,
+    sensorDisplayNames,
+  ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
   const getSeriesChartColor = (key: string, idx: number) => {
     if (key === ZONE_AVERAGE_DATA_KEY) {
       const selectedZone = zones.find((zo) => zo.id === zoneFilter);
@@ -943,6 +1012,8 @@ export function useDashboardController() {
     setAvailableSiteIds,
     showSeasonModal,
     setShowSeasonModal,
+    showSmsOptInModal,
+    setShowSmsOptInModal,
     seasonStart,
     setSeasonStart,
     seasonEnd,

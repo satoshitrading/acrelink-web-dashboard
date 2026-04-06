@@ -8,6 +8,10 @@ import { ref, get } from "firebase/database";
 import { getBatteryStatusColor, getSignalStatusColor, getMoistureStatusColors } from "@/lib/sensor-status-utils";
 import { useZones } from "@/hooks/useZones";
 import { useSensorDisplayNames } from "@/hooks/useSensorDisplayNames";
+import { useSensorsThresholdMap } from "@/hooks/useSensorsThresholdMap";
+import { updateSensorMoistureThreshold } from "@/services/zoneService";
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 const ZoneDetailPage = () => {
   const { zoneId } = useParams<{ zoneId: string }>();
@@ -51,13 +55,17 @@ const ZoneDetailPage = () => {
     fetchUserSiteId();
   }, [navigate]);
 
-  const { zones, allNodeReadings, loading } = useZones(userSiteId);
+  const { zones, allNodeReadings, loading, updateZone } = useZones(userSiteId);
   const sensorDisplayNames = useSensorDisplayNames(userSiteId);
+  const { toast } = useToast();
 
   const zone = useMemo(
     () => zones.find((z) => z.id === zoneId),
     [zones, zoneId]
   );
+
+  const nodeIds = zone?.nodeIds ?? [];
+  const sensorThresholds = useSensorsThresholdMap(userSiteId, nodeIds);
 
   const nodeRows = useMemo(() => {
     if (!zone) return [];
@@ -141,6 +149,120 @@ const ZoneDetailPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        <Card className="border-2 mb-8">
+          <CardContent className="p-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-display font-bold text-foreground mb-2">
+                Moisture alert thresholds (VWC %)
+              </h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Alerts fire when average zone moisture or an individual node drops{" "}
+                <strong>below</strong> the value you set. Used with SMS/email
+                alerts from the server.
+              </p>
+              <div className="flex flex-col sm:flex-row sm:items-end gap-3 max-w-md">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="zone-threshold">Zone average</Label>
+                  <input
+                    id="zone-threshold"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                    placeholder="e.g. 22"
+                    defaultValue={
+                      zone.moistureThresholdVwc == null
+                        ? ""
+                        : String(zone.moistureThresholdVwc)
+                    }
+                    key={`zone-th-${zone.id}-${String(zone.moistureThresholdVwc)}`}
+                    onBlur={async (e) => {
+                      const raw = e.target.value.trim();
+                      if (raw === "") {
+                        await updateZone(zone.id, { moistureThresholdVwc: null });
+                        toast({ title: "Saved", description: "Zone threshold cleared." });
+                        return;
+                      }
+                      const n = Number(raw);
+                      if (!Number.isFinite(n) || n < 0 || n > 100) {
+                        toast({
+                          title: "Invalid value",
+                          description: "Enter a number between 0 and 100.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      await updateZone(zone.id, { moistureThresholdVwc: n });
+                      toast({ title: "Saved", description: "Zone threshold updated." });
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {nodeRows.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-3">
+                  Per-node thresholds
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {nodeRows.map(({ nodeId }) => (
+                    <div
+                      key={nodeId}
+                      className="flex flex-col gap-1 p-3 rounded-lg border border-border bg-muted/20"
+                    >
+                      <span className="text-xs font-mono text-muted-foreground truncate">
+                        {sensorDisplayNames[nodeId] ?? nodeId}
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        className="w-full px-2 py-1.5 text-sm border border-border rounded bg-background"
+                        placeholder="Node min VWC %"
+                        defaultValue={
+                          sensorThresholds[nodeId] === undefined ||
+                          sensorThresholds[nodeId] === null
+                            ? ""
+                            : String(sensorThresholds[nodeId])
+                        }
+                        key={`nth-${nodeId}-${sensorThresholds[nodeId] ?? "u"}`}
+                        onBlur={async (e) => {
+                          const raw = e.target.value.trim();
+                          if (raw === "") {
+                            await updateSensorMoistureThreshold(nodeId, null);
+                            toast({
+                              title: "Saved",
+                              description: `Cleared threshold for ${nodeId}.`,
+                            });
+                            return;
+                          }
+                          const n = Number(raw);
+                          if (!Number.isFinite(n) || n < 0 || n > 100) {
+                            toast({
+                              title: "Invalid value",
+                              description: "Enter a number between 0 and 100.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          await updateSensorMoistureThreshold(nodeId, n);
+                          toast({
+                            title: "Saved",
+                            description: `Node threshold updated for ${nodeId}.`,
+                          });
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {nodeRows.length === 0 ? (
           <Card className="border-2">
             <CardContent className="p-6 text-center">

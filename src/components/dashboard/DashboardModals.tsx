@@ -4,6 +4,7 @@ import { GatewayNamingModal } from "@/components/GatewayNamingModal";
 import { ZoneManagementPanel } from "@/components/ZoneManagementPanel";
 import { NodeAssignmentModal } from "@/components/NodeAssignmentModal";
 import { useDashboard } from "@/contexts/dashboard/DashboardContext";
+import { SmsOptInModal } from "@/components/SmsOptInModal";
 
 export function DashboardModals() {
   const {
@@ -31,6 +32,8 @@ export function DashboardModals() {
     setSeasonEnd,
     generatingReport,
     downloadSeasonSummary,
+    showSmsOptInModal,
+    setShowSmsOptInModal,
   } = useDashboard();
 
   return (
@@ -71,6 +74,14 @@ export function DashboardModals() {
         gateways={gatewayList}
         onSave={handleGatewayNamesSaved}
         onSkip={handleGatewayNamesSaved}
+      />
+
+      <SmsOptInModal
+        open={showSmsOptInModal}
+        onOpenChange={(o) => {
+          if (!o) localStorage.setItem("acrelinkSmsPromptDismissed", "1");
+          setShowSmsOptInModal(o);
+        }}
       />
 
       {showSeasonModal && (

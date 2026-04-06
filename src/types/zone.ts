@@ -11,6 +11,8 @@ export interface Zone {
   nodeIds: string[];
   createdAt: string;
   updatedAt: string;
+  /** Alert when zone average moisture (VWC %) drops below this value. */
+  moistureThresholdVwc?: number | null;
 }
 
 export interface ZoneSummary extends Zone {

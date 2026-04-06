@@ -31,7 +31,6 @@ import acreLinkLogo from "@/assets/acrelink-logo.png";
 import { toast } from "react-toastify";
 import { Modal } from "@/components/ui/modal";
 import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
 import { auth } from "@/lib/firebase";
 import { useServiceData, Sensor, SensorStatus } from "@/hooks/useServiceData";
 
