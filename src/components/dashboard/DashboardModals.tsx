@@ -76,13 +76,13 @@ export function DashboardModals() {
         onSkip={handleGatewayNamesSaved}
       />
 
-      <SmsOptInModal
+      {/* <SmsOptInModal
         open={showSmsOptInModal}
         onOpenChange={(o) => {
           if (!o) localStorage.setItem("acrelinkSmsPromptDismissed", "1");
           setShowSmsOptInModal(o);
         }}
-      />
+      /> */}
 
       {showSeasonModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
