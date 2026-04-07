@@ -65,7 +65,8 @@ async function syncSensorDisplayNamesAfterZoneAssign(
   await update(ref(database, SENSORS_PATH), updates);
 }
 
-const DEFAULT_ZONE_COLOR = "#6366f1";
+/** Default stored on new zones; map treats this as “no custom color” and uses moisture status instead. */
+export const DEFAULT_ZONE_COLOR = "#6366f1";
 
 export type CreateZoneInput = {
   name: string;

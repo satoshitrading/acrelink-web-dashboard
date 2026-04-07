@@ -20,6 +20,7 @@ import {
 } from "@/lib/map-node-status";
 import { toNodeFilterValue } from "@/lib/zone-filter-utils";
 import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
+import { DEFAULT_ZONE_COLOR } from "@/services/zoneService";
 
 const DEFAULT_CENTER: [number, number] = [39.8283, -98.5795];
 const DEFAULT_ZOOM = 4;
@@ -147,6 +148,16 @@ function zoneHullLatLngs(
   }
 }
 
+/** Polygon stroke/fill: custom stored color when set; otherwise moisture status (default stored color counts as unset). */
+function zonePolygonHex(zone: Zone, moistureStatus: string): string {
+  const raw = zone.color?.trim() ?? "";
+  if (!raw) return moistureStatusToChartHex(moistureStatus);
+  if (raw.toLowerCase() === DEFAULT_ZONE_COLOR.toLowerCase()) {
+    return moistureStatusToChartHex(moistureStatus);
+  }
+  return raw;
+}
+
 export function FieldMapPanel() {
   const [activeBasemap, setActiveBasemap] = useState<BasemapPreset | null>(null);
 
@@ -226,8 +237,9 @@ export function FieldMapPanel() {
         <CardTitle className="text-xl font-display">Field map</CardTitle>
         <p className="text-sm text-muted-foreground">
           Nodes with GPS appear as dots (green ok, yellow warn, red dry, gray
-          offline). Zone outlines are convex hulls of node positions. Click a
-          node to filter the dashboard, or a zone to open its moisture trends.
+          offline). Zone outlines use a stored color when customized, otherwise
+          moisture status; zone names are shown on the map. Click a node to
+          filter the dashboard, or a zone to open its moisture trends.
         </p>
       </CardHeader>
       <CardContent className="pt-0">
@@ -255,7 +267,8 @@ export function FieldMapPanel() {
               ) : null}
 
               {hulls.map(({ zone, positions }) => {
-                const hex = moistureStatusToChartHex(
+                const hex = zonePolygonHex(
+                  zone,
                   zoneStatusById[zone.id] ?? "Optimal"
                 );
                 return positions && positions.length >= 3 ? (
@@ -269,7 +282,7 @@ export function FieldMapPanel() {
                       weight: 2,
                     }}
                     eventHandlers={{
-                      click: () => goToZoneTrends(zone.id),
+                      click: () => onMarkerClick(zone.id),
                     }}
                   >
                     <Popup>
