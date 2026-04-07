@@ -20,7 +20,7 @@ import {
 } from "@/lib/map-node-status";
 import { toNodeFilterValue } from "@/lib/zone-filter-utils";
 import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
-import { DEFAULT_ZONE_COLOR } from "@/services/zoneService";
+import { DEFAULT_ZONE_COLOR } from "@/lib/zoneColor";
 
 const DEFAULT_CENTER: [number, number] = [39.8283, -98.5795];
 const DEFAULT_ZOOM = 4;

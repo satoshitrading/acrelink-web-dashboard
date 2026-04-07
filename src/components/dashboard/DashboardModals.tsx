@@ -11,7 +11,6 @@ export function DashboardModals() {
     zonePanelOpen,
     setZonePanelOpen,
     zones,
-    zoneSummaries,
     createZone,
     updateZone,
     deleteZone,
@@ -43,12 +42,11 @@ export function DashboardModals() {
         open={zonePanelOpen}
         onOpenChange={setZonePanelOpen}
         zones={zones}
-        zoneSummaries={zoneSummaries}
-        onCreate={async (name) => {
+        onCreate={async (name, color) => {
           if (!userSiteId?.trim()) {
             throw new Error("No site selected. Try reloading the dashboard.");
           }
-          await createZone({ name });
+          await createZone({ name, color });
         }}
         onUpdate={updateZone}
         onDelete={deleteZone}
@@ -78,13 +76,13 @@ export function DashboardModals() {
         onSkip={handleGatewayNamesSaved}
       />
 
-      {/* <SmsOptInModal
+      <SmsOptInModal
         open={showSmsOptInModal}
         onOpenChange={(o) => {
           if (!o) localStorage.setItem("acrelinkSmsPromptDismissed", "1");
           setShowSmsOptInModal(o);
         }}
-      /> */}
+      />
 
       {showSeasonModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">

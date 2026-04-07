@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ import { useDashboard } from "@/contexts/dashboard/DashboardContext";
 const MAX_ZONE_CARDS = 8;
 
 export function ZoneStatusPanel() {
+  const navigate = useNavigate();
   const {
     zoneFilter,
     setZoneFilter,
@@ -211,11 +212,14 @@ export function ZoneStatusPanel() {
                     return (
                       <Card
                         key={zone.id}
-                        onClick={() => goToZoneTrends(zone.id)}
+                        onClick={() =>
+                          navigate(`/zone/${encodeURIComponent(zone.id)}`)
+                        }
                         className={`shadow-industrial border-2 hover-lift group relative overflow-hidden border-[#DEDBD4] cursor-pointer transition-all hover:shadow-lg`}
                       >
                         <div
-                          className={`absolute top-0 left-0 w-full h-1.5 ${colors.bar}`}
+                          className={`absolute top-0 left-0 w-full h-1.5`}
+                          style={{ backgroundColor: zone.color }}
                         />
                         <CardContent className="p-5 pt-7">
                           <div className="flex items-start justify-between mb-4">
@@ -279,19 +283,25 @@ export function ZoneStatusPanel() {
                               <p className={`font-display font-bold text-sm flex items-center justify-center ${colors.text}`}>
                                 Status: {zone.status}
                               </p>
-                              <Link
-                                to={`/zone/${encodeURIComponent(zone.id)}`}
-                                className="text-xs text-primary underline mt-2 block text-center"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                Zone details
-                              </Link>
                             </div>
+                            <Button
+                              type="button"
+                              variant="default"
+                              size="sm"
+                              className="w-full mt-3 shadow-sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                goToZoneTrends(zone.id);
+                              }}
+                            >
+                              Analytics View
+                            </Button>
                             <Button
                               type="button"
                               variant="secondary"
                               size="sm"
-                              className="w-full mt-4 shadow-sm"
+                              className="w-full mt-2 shadow-sm"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();

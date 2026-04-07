@@ -22,7 +22,7 @@ function isDashboardTabValue(v: string): v is DashboardTabValue {
 
 /** Page shell: nav + main panels. Shared state comes from `DashboardProvider` (React Context). */
 export function DashboardLayout() {
-  const { dashboardTab, setDashboardTab } = useDashboard();
+  const { dashboardTab, setDashboardTab, setZoneFilter } = useDashboard();
 
   return (
     <div className="min-h-screen gradient-hero">
@@ -32,7 +32,10 @@ export function DashboardLayout() {
         <Tabs
           value={dashboardTab}
           onValueChange={(v) => {
-            if (isDashboardTabValue(v)) setDashboardTab(v);
+            if (isDashboardTabValue(v)) {
+              setDashboardTab(v);
+              if (v === "overview") setZoneFilter("all");
+            }
           }}
           className="w-full"
         >

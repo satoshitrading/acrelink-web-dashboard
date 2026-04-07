@@ -1,4 +1,5 @@
 import { database } from "@/lib/firebase";
+import { DEFAULT_ZONE_COLOR, normalizeZoneColor } from "@/lib/zoneColor";
 import type { Zone } from "@/types/zone";
 import {
   ref,
@@ -65,9 +66,6 @@ async function syncSensorDisplayNamesAfterZoneAssign(
   await update(ref(database, SENSORS_PATH), updates);
 }
 
-/** Default stored on new zones; map treats this as “no custom color” and uses moisture status instead. */
-export const DEFAULT_ZONE_COLOR = "#6366f1";
-
 export type CreateZoneInput = {
   name: string;
   siteId: string;
@@ -121,7 +119,9 @@ export function subscribeToSiteZones(
         list.push({
           id,
           name: String(val.name ?? ""),
-          color: String(val.color ?? "#6366f1"),
+          color: normalizeZoneColor(
+            val.color != null ? String(val.color) : undefined
+          ),
           siteId: String(val.siteId ?? siteId),
           nodeIds: Array.isArray(val.nodeIds)
             ? normalizeNodeIds(val.nodeIds as string[])
@@ -151,7 +151,7 @@ export async function createZone(input: CreateZoneInput): Promise<string> {
 
   await set(newRef, {
     name: input.name.trim(),
-    color: input.color ?? DEFAULT_ZONE_COLOR,
+    color: normalizeZoneColor(input.color ?? DEFAULT_ZONE_COLOR),
     siteId: input.siteId,
     nodeIds: normalizeNodeIds(input.nodeIds),
     createdAt: now,
@@ -170,7 +170,8 @@ export async function updateZone(
     updatedAt: new Date().toISOString(),
   };
   if (updates.name !== undefined) payload.name = updates.name.trim();
-  if (updates.color !== undefined) payload.color = updates.color;
+  if (updates.color !== undefined)
+    payload.color = normalizeZoneColor(updates.color);
   if (updates.nodeIds !== undefined)
     payload.nodeIds = normalizeNodeIds(updates.nodeIds);
   if (updates.moistureThresholdVwc !== undefined) {
