@@ -178,9 +178,7 @@ export function ZoneStatusPanel() {
                               r.packetReceptionPercent ?? r.signal
                             );
                             return (
-                              <span
-                                className={`text-xs font-bold px-2 py-0.5 rounded shrink-0 ${link.badgeBg} ${link.text}`}
-                              >
+                              <span className={`text-xs font-bold shrink-0 ${link.text}`}>
                                 {link.status}
                               </span>
                             );
@@ -215,12 +213,9 @@ export function ZoneStatusPanel() {
                         onClick={() =>
                           navigate(`/zone/${encodeURIComponent(zone.id)}`)
                         }
-                        className={`shadow-industrial border-2 hover-lift group relative overflow-hidden border-[#DEDBD4] cursor-pointer transition-all hover:shadow-lg`}
+                        className={`shadow-industrial border-2 ${colors.border} hover-lift group relative cursor-pointer transition-all hover:shadow-lg`}
                       >
-                        <div
-                          className={`absolute top-0 left-0 w-full h-1.5`}
-                          style={{ backgroundColor: zone.color }}
-                        />
+                        <div className={`h-1.5 w-full ${colors.bar}`} />
                         <CardContent className="p-5 pt-7">
                           <div className="flex items-start justify-between mb-4">
                             <h2 className="text-xl font-display font-bold text-foreground truncate" title={zone.name}>
@@ -271,9 +266,7 @@ export function ZoneStatusPanel() {
                               {(() => {
                                 const link = getSignalStatusColor(zone.avgSignal);
                                 return (
-                                  <span
-                                    className={`text-xs font-bold px-2 py-0.5 rounded text-right ${link.badgeBg} ${link.text}`}
-                                  >
+                                  <span className={`text-xs font-bold text-right ${link.text}`}>
                                     {link.status}
                                   </span>
                                 );
