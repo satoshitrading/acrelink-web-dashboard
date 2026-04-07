@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +11,6 @@ import {
   Settings,
   Layers,
   Loader2,
-  Users,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -26,7 +26,6 @@ const MAX_ZONE_CARDS = 8;
 
 export function ZoneStatusPanel() {
   const {
-    navigate,
     zoneFilter,
     setZoneFilter,
     zoneSummaries,
@@ -38,6 +37,7 @@ export function ZoneStatusPanel() {
     setAssignOpen,
     setAssignTargetZoneId,
     sensorDisplayNames,
+    goToZoneTrends,
   } = useDashboard();
 
   const [zoneGridExpanded, setZoneGridExpanded] = useState(false);
@@ -211,12 +211,11 @@ export function ZoneStatusPanel() {
                     return (
                       <Card
                         key={zone.id}
-                        onClick={() => navigate(`/zone/${encodeURIComponent(zone.id)}`)}
+                        onClick={() => goToZoneTrends(zone.id)}
                         className={`shadow-industrial border-2 hover-lift group relative overflow-hidden border-[#DEDBD4] cursor-pointer transition-all hover:shadow-lg`}
                       >
                         <div
                           className={`absolute top-0 left-0 w-full h-1.5 ${colors.bar}`}
-                          style={{ backgroundColor: zone.color }}
                         />
                         <CardContent className="p-5 pt-7">
                           <div className="flex items-start justify-between mb-4">
@@ -280,6 +279,13 @@ export function ZoneStatusPanel() {
                               <p className={`font-display font-bold text-sm flex items-center justify-center ${colors.text}`}>
                                 Status: {zone.status}
                               </p>
+                              <Link
+                                to={`/zone/${encodeURIComponent(zone.id)}`}
+                                className="text-xs text-primary underline mt-2 block text-center"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Zone details
+                              </Link>
                             </div>
                             <Button
                               type="button"

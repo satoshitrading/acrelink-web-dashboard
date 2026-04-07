@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { DashboardIntro } from "@/components/dashboard/DashboardIntro";
 import { FieldMapPanel } from "@/components/dashboard/FieldMapPanel";
@@ -12,38 +11,18 @@ import { SystemHealthPanel } from "@/components/dashboard/SystemHealthPanel";
 import { DashboardModals } from "@/components/dashboard/DashboardModals";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-
-const DASHBOARD_TAB_STORAGE_KEY = "acrelink.dashboard.activeTab";
+import { useDashboard } from "@/contexts/dashboard/DashboardContext";
+import type { DashboardTabValue } from "@/contexts/dashboard/useDashboardController";
 
 const DASHBOARD_TABS = ["overview", "analytics", "reports"] as const;
-export type DashboardTabValue = (typeof DASHBOARD_TABS)[number];
 
 function isDashboardTabValue(v: string): v is DashboardTabValue {
   return (DASHBOARD_TABS as readonly string[]).includes(v);
 }
 
-function readStoredDashboardTab(): DashboardTabValue {
-  if (typeof window === "undefined") return "overview";
-  try {
-    const raw = window.localStorage.getItem(DASHBOARD_TAB_STORAGE_KEY);
-    if (raw && isDashboardTabValue(raw)) return raw;
-  } catch {
-    // ignore quota / private mode
-  }
-  return "overview";
-}
-
 /** Page shell: nav + main panels. Shared state comes from `DashboardProvider` (React Context). */
 export function DashboardLayout() {
-  const [activeTab, setActiveTab] = useState<DashboardTabValue>(readStoredDashboardTab);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, activeTab);
-    } catch {
-      // ignore
-    }
-  }, [activeTab]);
+  const { dashboardTab, setDashboardTab } = useDashboard();
 
   return (
     <div className="min-h-screen gradient-hero">
@@ -51,9 +30,9 @@ export function DashboardLayout() {
       <div className="max-w-7xl mx-auto px-6 py-8 main-content-section">
         <DashboardIntro />
         <Tabs
-          value={activeTab}
+          value={dashboardTab}
           onValueChange={(v) => {
-            if (isDashboardTabValue(v)) setActiveTab(v);
+            if (isDashboardTabValue(v)) setDashboardTab(v);
           }}
           className="w-full"
         >

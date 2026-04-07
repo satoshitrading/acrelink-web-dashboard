@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ZoneFilterValue } from "@/types/zone";
 import {
@@ -26,6 +26,24 @@ import {
 import { useSensorDisplayNames } from "@/hooks/useSensorDisplayNames";
 import { useSiteSensorThresholds } from "@/hooks/useSiteSensorThresholds";
 import { useToast } from "@/hooks/use-toast";
+import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
+
+export type DashboardTabValue = "overview" | "analytics" | "reports";
+
+const DASHBOARD_TAB_STORAGE_KEY = "acrelink.dashboard.activeTab";
+
+function readStoredDashboardTab(): DashboardTabValue {
+  if (typeof window === "undefined") return "overview";
+  try {
+    const raw = window.localStorage.getItem(DASHBOARD_TAB_STORAGE_KEY);
+    if (raw === "overview" || raw === "analytics" || raw === "reports") {
+      return raw;
+    }
+  } catch {
+    /* ignore */
+  }
+  return "overview";
+}
 
 const DEFAULT_CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -56,6 +74,29 @@ export function useDashboardController() {
   const [zonePanelOpen, setZonePanelOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignTargetZoneId, setAssignTargetZoneId] = useState<string | null>(null);
+  const [dashboardTab, setDashboardTab] = useState<DashboardTabValue>(() =>
+    readStoredDashboardTab()
+  );
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, dashboardTab);
+    } catch {
+      /* ignore */
+    }
+  }, [dashboardTab]);
+
+  const goToZoneTrends = useCallback((zoneId: string) => {
+    setZoneFilter(zoneId);
+    setDashboardTab("analytics");
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        document
+          .getElementById("moisture-trends-section")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+    });
+  }, [setZoneFilter, setDashboardTab]);
 
   const {
     zones,
@@ -945,28 +986,36 @@ export function useDashboardController() {
 
   const getSeriesChartColor = (key: string, idx: number) => {
     if (key === ZONE_AVERAGE_DATA_KEY) {
-      const selectedZone = zones.find((zo) => zo.id === zoneFilter);
-      return (
-        selectedZone?.color ?? DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length]
-      );
+      const zs = zoneSummaries.find((z) => z.id === zoneFilter);
+      return zs
+        ? moistureStatusToChartHex(zs.status)
+        : DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length];
     }
     if (zoneFilter === "all") {
-      const z = zones.find((zo) => zo.id === key);
-      return (
-        z?.color ?? DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length]
-      );
+      const zs = zoneSummaries.find((z) => z.id === key);
+      return zs
+        ? moistureStatusToChartHex(zs.status)
+        : DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length];
     }
     if (zoneFilter === "unassigned") {
       return DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length];
     }
     if (isNodeFilterValue(zoneFilter)) {
       const nid = nodeIdFromZoneFilter(zoneFilter);
-      const p = nid ? findZoneContainingNode(zones, nid) : undefined;
-      return p?.color ?? DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length];
+      if (nid && key === nid) {
+        const r = allNodeReadings[nid];
+        const st = !r?.online ? "Offline" : r?.status ?? "Optimal";
+        return moistureStatusToChartHex(st);
+      }
     }
-    const selectedZone = zones.find((zo) => zo.id === zoneFilter);
-    if (selectedZone) {
-      return selectedZone.color;
+    const r = allNodeReadings[key];
+    if (r) {
+      const st = !r.online ? "Offline" : r.status ?? "Optimal";
+      return moistureStatusToChartHex(st);
+    }
+    const zs = zoneSummaries.find((z) => z.id === zoneFilter);
+    if (zs) {
+      return moistureStatusToChartHex(zs.status);
     }
     return DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length];
   };
@@ -1099,5 +1148,8 @@ export function useDashboardController() {
     getSeriesChartColor,
     getSeriesChartName,
     DEFAULT_CHART_COLORS,
+    dashboardTab,
+    setDashboardTab,
+    goToZoneTrends,
   };
 }

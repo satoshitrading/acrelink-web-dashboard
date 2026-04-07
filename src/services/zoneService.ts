@@ -65,10 +65,13 @@ async function syncSensorDisplayNamesAfterZoneAssign(
   await update(ref(database, SENSORS_PATH), updates);
 }
 
+const DEFAULT_ZONE_COLOR = "#6366f1";
+
 export type CreateZoneInput = {
   name: string;
-  color: string;
   siteId: string;
+  /** Stored in RTDB for legacy compatibility; UI defaults when omitted. */
+  color?: string;
   nodeIds?: string[];
 };
 
@@ -147,7 +150,7 @@ export async function createZone(input: CreateZoneInput): Promise<string> {
 
   await set(newRef, {
     name: input.name.trim(),
-    color: input.color,
+    color: input.color ?? DEFAULT_ZONE_COLOR,
     siteId: input.siteId,
     nodeIds: normalizeNodeIds(input.nodeIds),
     createdAt: now,

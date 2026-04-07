@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useCallback, useState, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -19,9 +19,99 @@ import {
   MAP_MARKER_COLORS,
 } from "@/lib/map-node-status";
 import { toNodeFilterValue } from "@/lib/zone-filter-utils";
+import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
 
 const DEFAULT_CENTER: [number, number] = [39.8283, -98.5795];
 const DEFAULT_ZOOM = 4;
+
+type BasemapPreset = {
+  id: string;
+  url: string;
+  attribution: string;
+  maxZoom: number;
+  maxNativeZoom: number;
+  /** False when not aerial imagery (e.g. OSM streets). */
+  isSatellite: boolean;
+};
+
+function buildBasemapPresets(): BasemapPreset[] {
+  return [
+    {
+      id: "esri-services",
+      url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      attribution:
+        'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+      maxZoom: 19,
+      maxNativeZoom: 19,
+      isSatellite: true,
+    },
+    {
+      id: "esri-server",
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      attribution:
+        'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+      maxZoom: 19,
+      maxNativeZoom: 19,
+      isSatellite: true,
+    },
+    {
+      id: "osm-streets",
+      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+      maxNativeZoom: 19,
+      isSatellite: false,
+    },
+  ];
+}
+
+const TILE_ERRORS_BEFORE_FALLBACK = 12;
+
+/** Tries satellite sources in order; falls back to OSM streets if tiles keep failing (e.g. ERR_CONNECTION_CLOSED to Esri). */
+function ResilientBasemapLayer({
+  onActivePresetChange,
+}: {
+  onActivePresetChange?: (preset: BasemapPreset) => void;
+}) {
+  const presets = useMemo(() => buildBasemapPresets(), []);
+  const [index, setIndex] = useState(0);
+  const errorStreakRef = useRef(0);
+  const preset = presets[Math.min(index, presets.length - 1)];
+
+  useEffect(() => {
+    onActivePresetChange?.(preset);
+  }, [preset, onActivePresetChange]);
+
+  const bumpFallback = useCallback(() => {
+    setIndex((i) => {
+      if (i >= presets.length - 1) return i;
+      return i + 1;
+    });
+    errorStreakRef.current = 0;
+  }, [presets.length]);
+
+  return (
+    <TileLayer
+      key={preset.id}
+      url={preset.url}
+      attribution={preset.attribution}
+      maxZoom={preset.maxZoom}
+      maxNativeZoom={preset.maxNativeZoom}
+      eventHandlers={{
+        tileerror: () => {
+          errorStreakRef.current += 1;
+          if (errorStreakRef.current >= TILE_ERRORS_BEFORE_FALLBACK) {
+            bumpFallback();
+          }
+        },
+        tileload: () => {
+          errorStreakRef.current = 0;
+        },
+      }}
+    />
+  );
+}
 
 function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap();
@@ -58,12 +148,16 @@ function zoneHullLatLngs(
 }
 
 export function FieldMapPanel() {
+  const [activeBasemap, setActiveBasemap] = useState<BasemapPreset | null>(null);
+
   const {
     userSiteId,
     zones,
+    zoneSummaries,
     allNodeReadings,
     setZoneFilter,
     zoneSectionLoading,
+    goToZoneTrends,
   } = useDashboard();
 
   const { gpsByNodeId, loading: gpsLoading } = useSiteSensorsGps(userSiteId);
@@ -95,6 +189,14 @@ export function FieldMapPanel() {
     }));
   }, [zones, gpsByNodeId]);
 
+  const zoneStatusById = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const s of zoneSummaries) {
+      m[s.id] = s.status;
+    }
+    return m;
+  }, [zoneSummaries]);
+
   const fitPositions = useMemo(() => {
     const list: [number, number][] = markers.map((m) => [m.lat, m.lng]);
     for (const h of hulls) {
@@ -112,13 +214,6 @@ export function FieldMapPanel() {
     [setZoneFilter]
   );
 
-  const onZonePolygonClick = useCallback(
-    (zoneId: string) => {
-      setZoneFilter(zoneId);
-    },
-    [setZoneFilter]
-  );
-
   const showMap =
     !zoneSectionLoading &&
     !gpsLoading &&
@@ -132,7 +227,7 @@ export function FieldMapPanel() {
         <p className="text-sm text-muted-foreground">
           Nodes with GPS appear as dots (green ok, yellow warn, red dry, gray
           offline). Zone outlines are convex hulls of node positions. Click a
-          node or zone to filter the dashboard.
+          node to filter the dashboard, or a zone to open its moisture trends.
         </p>
       </CardHeader>
       <CardContent className="pt-0">
@@ -146,6 +241,7 @@ export function FieldMapPanel() {
             Service page to see nodes on the map.
           </div>
         ) : (
+          <div className="space-y-2">
           <div className="h-[380px] w-full rounded-lg overflow-hidden border border-border z-0">
             <MapContainer
               center={DEFAULT_CENTER}
@@ -153,44 +249,44 @@ export function FieldMapPanel() {
               className="h-full w-full z-0"
               scrollWheelZoom
             >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
+              <ResilientBasemapLayer onActivePresetChange={setActiveBasemap} />
               {fitPositions.length > 0 ? (
                 <FitBounds positions={fitPositions} />
               ) : null}
 
-              {hulls.map(({ zone, positions }) =>
-                positions && positions.length >= 3 ? (
+              {hulls.map(({ zone, positions }) => {
+                const hex = moistureStatusToChartHex(
+                  zoneStatusById[zone.id] ?? "Optimal"
+                );
+                return positions && positions.length >= 3 ? (
                   <Polygon
                     key={zone.id}
                     positions={positions}
                     pathOptions={{
-                      color: zone.color,
-                      fillColor: zone.color,
+                      color: hex,
+                      fillColor: hex,
                       fillOpacity: 0.12,
                       weight: 2,
                     }}
                     eventHandlers={{
-                      click: () => onZonePolygonClick(zone.id),
+                      click: () => goToZoneTrends(zone.id),
                     }}
                   >
                     <Popup>
                       <button
                         type="button"
                         className="font-semibold text-primary underline"
-                        onClick={() => onZonePolygonClick(zone.id)}
+                        onClick={() => goToZoneTrends(zone.id)}
                       >
                         {zone.name}
                       </button>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Filter dashboard to this zone
+                        View moisture trends for this zone
                       </p>
                     </Popup>
                   </Polygon>
-                ) : null
-              )}
+                ) : null;
+              })}
 
               {markers.map((m) => (
                 <CircleMarker
@@ -224,6 +320,13 @@ export function FieldMapPanel() {
                 </CircleMarker>
               ))}
             </MapContainer>
+          </div>
+          {activeBasemap && !activeBasemap.isSatellite ? (
+            <p className="text-xs text-amber-800 dark:text-amber-200/90">
+              Satellite tiles could not be loaded (network or firewall). Showing
+              OpenStreetMap as a fallback; your overlays and markers are unchanged.
+            </p>
+          ) : null}
           </div>
         )}
 

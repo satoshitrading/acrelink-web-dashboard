@@ -34,7 +34,7 @@ export const getSignalStatusColor = (packetReceptionPercent: number) => {
 export const getMoistureStatusColors = (status: string) => {
     const statusColors: Record<string, { bg: string; border: string; text: string; bar: string }> = {
         Offline: { bg: "bg-red-600/10", border: "border-red-600/60", text: "text-red-600 dark:text-red-400", bar: "bg-red-600" },
-        "Critical: Dry": { bg: "bg-green-500/10", border: "border-green-500/60", text: "text-green-600 dark:text-green-400", bar: "bg-green-500" },
+        "Critical: Dry": { bg: "bg-red-500/10", border: "border-red-500/60", text: "text-red-600 dark:text-red-400", bar: "bg-red-500" },
         "Dry": { bg: "bg-yellow-500/10", border: "border-yellow-500/60", text: "text-yellow-600 dark:text-yellow-400", bar: "bg-yellow-500" },
         "Optimal": { bg: "bg-green-500/10", border: "border-green-500/60", text: "text-green-600 dark:text-green-400", bar: "bg-green-500" },
         "Wet": { bg: "bg-blue-500/10", border: "border-blue-500/60", text: "text-blue-600 dark:text-blue-400", bar: "bg-blue-500" },

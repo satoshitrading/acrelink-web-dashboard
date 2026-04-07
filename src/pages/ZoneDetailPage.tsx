@@ -6,6 +6,7 @@ import { ArrowLeft, Droplet, Battery, Signal, AlertCircle, Loader } from "lucide
 import { auth, database } from "@/lib/firebase";
 import { ref, get } from "firebase/database";
 import { getBatteryStatusColor, getSignalStatusColor, getMoistureStatusColors } from "@/lib/sensor-status-utils";
+import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
 import { useZones } from "@/hooks/useZones";
 import { useSensorDisplayNames } from "@/hooks/useSensorDisplayNames";
 import { useSensorsThresholdMap } from "@/hooks/useSensorsThresholdMap";
@@ -55,7 +56,8 @@ const ZoneDetailPage = () => {
     fetchUserSiteId();
   }, [navigate]);
 
-  const { zones, allNodeReadings, loading, updateZone } = useZones(userSiteId);
+  const { zones, zoneSummaries, allNodeReadings, loading, updateZone } =
+    useZones(userSiteId);
   const sensorDisplayNames = useSensorDisplayNames(userSiteId);
   const { toast } = useToast();
 
@@ -63,6 +65,11 @@ const ZoneDetailPage = () => {
     () => zones.find((z) => z.id === zoneId),
     [zones, zoneId]
   );
+
+  const zoneStatusHex = useMemo(() => {
+    const s = zoneSummaries.find((z) => z.id === zoneId);
+    return moistureStatusToChartHex(s?.status ?? "Optimal");
+  }, [zoneSummaries, zoneId]);
 
   const nodeIds = zone?.nodeIds ?? [];
   const sensorThresholds = useSensorsThresholdMap(userSiteId, nodeIds);
@@ -134,7 +141,7 @@ const ZoneDetailPage = () => {
           <div className="flex items-center gap-3">
             <span
               className="h-10 w-10 rounded-lg shrink-0 border-2 border-border"
-              style={{ backgroundColor: zone.color }}
+              style={{ backgroundColor: zoneStatusHex }}
             />
             <div>
               <h1 className="text-3xl font-display font-bold text-foreground">

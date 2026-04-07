@@ -11,6 +11,7 @@ export function DashboardModals() {
     zonePanelOpen,
     setZonePanelOpen,
     zones,
+    zoneSummaries,
     createZone,
     updateZone,
     deleteZone,
@@ -42,11 +43,12 @@ export function DashboardModals() {
         open={zonePanelOpen}
         onOpenChange={setZonePanelOpen}
         zones={zones}
-        onCreate={async (name, color) => {
+        zoneSummaries={zoneSummaries}
+        onCreate={async (name) => {
           if (!userSiteId?.trim()) {
             throw new Error("No site selected. Try reloading the dashboard.");
           }
-          await createZone({ name, color });
+          await createZone({ name });
         }}
         onUpdate={updateZone}
         onDelete={deleteZone}

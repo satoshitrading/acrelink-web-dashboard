@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { computeZoneSummaries } from "@/services/aggregationService";
+import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +48,15 @@ export function NodeAssignmentModal({
     }
     return m;
   }, [allNodeReadings]);
+
+  const zoneStatusById = useMemo(() => {
+    const summaries = computeZoneSummaries(allZones, allNodeReadings);
+    const m: Record<string, string> = {};
+    for (const s of summaries) {
+      m[s.id] = s.status;
+    }
+    return m;
+  }, [allZones, allNodeReadings]);
 
   useEffect(() => {
     if (!open || !zone) return;
@@ -101,8 +112,16 @@ export function NodeAssignmentModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm md:max-w-md lg:max-w-lg xl:max-w-screen-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Assign nodes -{" "}
-            <span className="font-display" style={{ color: zone.color }}>
+          <DialogTitle>
+            Assign nodes —{" "}
+            <span
+              className="font-display"
+              style={{
+                color: moistureStatusToChartHex(
+                  zoneStatusById[zone.id] ?? "Optimal"
+                ),
+              }}
+            >
               {zone.name}
             </span>
           </DialogTitle>
@@ -134,7 +153,11 @@ export function NodeAssignmentModal({
                             In{" "}
                             <span
                               className="font-display font-semibold"
-                              style={{ color: currentZone.color }}
+                              style={{
+                                color: moistureStatusToChartHex(
+                                  zoneStatusById[currentZone.id] ?? "Optimal"
+                                ),
+                              }}
                             >
                               {currentZone.name}
                             </span>

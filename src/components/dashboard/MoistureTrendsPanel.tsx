@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { ChartTooltip } from "@/components/dashboard/ChartTooltip";
 import { useDashboard } from "@/contexts/dashboard/DashboardContext";
+import { ZoneSelector } from "@/components/ZoneSelector";
 
 export function MoistureTrendsPanel() {
   const {
@@ -41,19 +42,69 @@ export function MoistureTrendsPanel() {
     isWholeZoneView,
     wholeZoneChartMode,
     setWholeZoneChartMode,
+    zoneFilter,
+    setZoneFilter,
+    zoneSummaries,
+    unassignedNodeIds,
+    sensorDisplayNames,
+    zoneSectionLoading,
   } = useDashboard();
 
   return (
-    <Card className=" mb-8 shadow-industrial-lg border-2 border-border/50">
+    <Card
+      id="moisture-trends-section"
+      className=" mb-8 shadow-industrial-lg border-2 border-border/50"
+    >
       <CardHeader className="main-content-section">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ">
-          <div>
-            <CardTitle className="text-[clamp(20px,2vw,30px)] font-display font-bold">Moisture Trends by Zone</CardTitle>
-            <p className="text-[clamp(14px,2vw,18px)] text-muted-foreground">
-              {chartView === "forecast"
-                ? `Projected drying trend`
-                : `Historical data • Green Shaded Area is Optimal Moisture Zone (${optimalBandRange.max}%-${optimalBandRange.min}%)`}
-            </p>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-end gap-4 lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-[clamp(20px,2vw,30px)] font-display font-bold">
+                Moisture Trends by Zone
+              </CardTitle>
+              <p className="text-[clamp(14px,2vw,18px)] text-muted-foreground">
+                {chartView === "forecast"
+                  ? `Projected drying trend`
+                  : `Historical data • Green Shaded Area is Optimal Moisture Zone (${optimalBandRange.max}%-${optimalBandRange.min}%)`}
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-end shrink-0 w-full lg:w-auto">
+              <ZoneSelector
+                className="min-w-0 w-full sm:max-w-[min(100%,380px)]"
+                value={zoneFilter}
+                onChange={setZoneFilter}
+                zones={zoneSummaries}
+                unassignedNodeIds={unassignedNodeIds}
+                nodeLabel={(id) => sensorDisplayNames[id] ?? id}
+                disabled={zoneSectionLoading}
+              />
+              {isWholeZoneView && (
+                <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5 self-stretch sm:self-auto">
+                  <Button
+                    type="button"
+                    variant={
+                      wholeZoneChartMode === "nodes" ? "default" : "ghost"
+                    }
+                    size="sm"
+                    className="text-xs rounded-sm"
+                    onClick={() => setWholeZoneChartMode("nodes")}
+                  >
+                    All node lines
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={
+                      wholeZoneChartMode === "zoneAverage" ? "default" : "ghost"
+                    }
+                    size="sm"
+                    className="text-xs rounded-sm"
+                    onClick={() => setWholeZoneChartMode("zoneAverage")}
+                  >
+                    Zone average
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex gap-2 justify-end flex-wrap">
@@ -118,34 +169,6 @@ export function MoistureTrendsPanel() {
       <CardContent className="main-content-section">
         {chartView === "moisture" && (
           <>
-            {isWholeZoneView && (
-              <div className="flex justify-center mb-4">
-                <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
-                  <Button
-                    type="button"
-                    variant={
-                      wholeZoneChartMode === "nodes" ? "default" : "ghost"
-                    }
-                    size="sm"
-                    className="text-xs rounded-sm"
-                    onClick={() => setWholeZoneChartMode("nodes")}
-                  >
-                    All node lines
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={
-                      wholeZoneChartMode === "zoneAverage" ? "default" : "ghost"
-                    }
-                    size="sm"
-                    className="text-xs rounded-sm"
-                    onClick={() => setWholeZoneChartMode("zoneAverage")}
-                  >
-                    Zone average
-                  </Button>
-                </div>
-              </div>
-            )}
             <ResponsiveContainer width="100%" height={350}>
               <LineChart data={trendTimeRange === "24hr" ? trend24HrData : trend7DayData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
