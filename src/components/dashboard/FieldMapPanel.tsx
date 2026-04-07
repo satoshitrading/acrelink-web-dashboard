@@ -9,8 +9,11 @@ import {
 } from "react-leaflet";
 import { LatLngBounds } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashboard } from "@/contexts/dashboard/DashboardContext";
+import { LocateFixed } from "lucide-react";
+import { toast } from "sonner";
 import { useSiteSensorsGps } from "@/hooks/useSiteSensorsGps";
 import type { Zone } from "@/types/zone";
 import { convexHull, type Point2 } from "@/lib/convex-hull";
@@ -24,6 +27,7 @@ import { DEFAULT_ZONE_COLOR } from "@/lib/zoneColor";
 
 const DEFAULT_CENTER: [number, number] = [39.8283, -98.5795];
 const DEFAULT_ZOOM = 4;
+const LOCATE_ME_ZOOM = 15;
 
 type BasemapPreset = {
   id: string;
@@ -128,6 +132,51 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
   return null;
 }
 
+/** Leaflet-positioned control; must be rendered inside MapContainer. */
+function LocateMeMapControl() {
+  const map = useMap();
+  const [busy, setBusy] = useState(false);
+
+  const handleClick = useCallback(() => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported in this browser.");
+      return;
+    }
+    setBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        map.flyTo([coords.latitude, coords.longitude], LOCATE_ME_ZOOM);
+        setBusy(false);
+      },
+      (err) => {
+        setBusy(false);
+        toast.error(
+          err.message ? `Location error: ${err.message}` : "Could not get your location."
+        );
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 }
+    );
+  }, [map]);
+
+  return (
+    <div className="leaflet-top leaflet-right" style={{ margin: 12 }}>
+      <div className="leaflet-control leaflet-bar">
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="h-9 w-9 rounded-sm border-0 bg-background shadow-sm hover:bg-muted"
+          disabled={busy}
+          aria-label="Locate me — center map on my position"
+          onClick={handleClick}
+        >
+          <LocateFixed className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function zoneHullLatLngs(
   zone: Zone,
   gpsByNodeId: Record<string, { lat: number; lng: number }>
@@ -225,6 +274,13 @@ export function FieldMapPanel() {
     [setZoneFilter]
   );
 
+  const onZonePolygonClick = useCallback(
+    (zoneId: string) => {
+      setZoneFilter(zoneId);
+    },
+    [setZoneFilter]
+  );
+
   const showMap =
     !zoneSectionLoading &&
     !gpsLoading &&
@@ -237,9 +293,12 @@ export function FieldMapPanel() {
         <CardTitle className="text-xl font-display">Field map</CardTitle>
         <p className="text-sm text-muted-foreground">
           Nodes with GPS appear as dots (green ok, yellow warn, red dry, gray
-          offline). Zone outlines use a stored color when customized, otherwise
-          moisture status; zone names are shown on the map. Click a node to
-          filter the dashboard, or a zone to open its moisture trends.
+          offline). Zone outlines reflect moisture status (or a legacy custom
+          color if set). Click a zone outline to filter the dashboard by that
+          zone, or a node to filter by that sensor. Use the View control and
+          choose &quot;All zones (aggregated)&quot; to clear the filter. Open a
+          zone popup to jump to moisture trends on the Analytics tab. Use Locate
+          me (top-right on the map) to center on your GPS position.
         </p>
       </CardHeader>
       <CardContent className="pt-0">
@@ -262,6 +321,7 @@ export function FieldMapPanel() {
               scrollWheelZoom
             >
               <ResilientBasemapLayer onActivePresetChange={setActiveBasemap} />
+              <LocateMeMapControl />
               {fitPositions.length > 0 ? (
                 <FitBounds positions={fitPositions} />
               ) : null}
@@ -282,7 +342,7 @@ export function FieldMapPanel() {
                       weight: 2,
                     }}
                     eventHandlers={{
-                      click: () => onMarkerClick(zone.id),
+                      click: () => onZonePolygonClick(zone.id),
                     }}
                   >
                     <Popup>

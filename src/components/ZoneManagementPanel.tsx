@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,27 +10,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Zone } from "@/types/zone";
-import { DEFAULT_ZONE_COLOR, normalizeZoneColor } from "@/lib/zoneColor";
+import type { Zone, ZoneSummary } from "@/types/zone";
+import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
 import { Trash2, Pencil } from "lucide-react";
-
-const PRESET_COLORS = [
-  DEFAULT_ZONE_COLOR,
-  "#22c55e",
-  "#eab308",
-  "#ef4444",
-  "#8b5cf6",
-  "#06b6d4",
-  "#f97316",
-  "#ec4899",
-];
 
 interface ZoneManagementPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   zones: Zone[];
-  onCreate: (name: string, color: string) => Promise<void>;
-  onUpdate: (zoneId: string, updates: { name?: string; color?: string }) => Promise<void>;
+  /** Used to show moisture status colors in the list (same semantics as the field map). */
+  zoneSummaries: ZoneSummary[];
+  onCreate: (name: string) => Promise<void>;
+  onUpdate: (zoneId: string, updates: { name?: string }) => Promise<void>;
   onDelete: (zoneId: string) => Promise<void>;
   onAssignNodes?: (zone: Zone) => void;
 }
@@ -39,26 +30,32 @@ export function ZoneManagementPanel({
   open,
   onOpenChange,
   zones,
+  zoneSummaries,
   onCreate,
   onUpdate,
   onDelete,
   onAssignNodes,
 }: ZoneManagementPanelProps) {
   const [newName, setNewName] = useState("");
-  const [newColor, setNewColor] = useState(DEFAULT_ZONE_COLOR);
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editColor, setEditColor] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const statusHexByZoneId = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const s of zoneSummaries) {
+      m[s.id] = moistureStatusToChartHex(s.status);
+    }
+    return m;
+  }, [zoneSummaries]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
     setBusy(true);
     try {
-      await onCreate(newName.trim(), normalizeZoneColor(newColor));
+      await onCreate(newName.trim());
       setNewName("");
-      setNewColor(DEFAULT_ZONE_COLOR);
     } finally {
       setBusy(false);
     }
@@ -67,7 +64,6 @@ export function ZoneManagementPanel({
   const startEdit = (z: Zone) => {
     setEditingId(z.id);
     setEditName(z.name);
-    setEditColor(normalizeZoneColor(z.color));
   };
 
   const saveEdit = async () => {
@@ -76,7 +72,6 @@ export function ZoneManagementPanel({
     try {
       await onUpdate(editingId, {
         name: editName.trim(),
-        color: normalizeZoneColor(editColor),
       });
       setEditingId(null);
     } finally {
@@ -102,7 +97,7 @@ export function ZoneManagementPanel({
           <DialogHeader>
             <DialogTitle>Manage zones</DialogTitle>
             <DialogDescription>
-              Create zones, set names and colors, and assign nodes from the list below. Deleting a zone does not remove sensor data — nodes become unassigned.
+              Create zones, set names, and assign nodes from the list below. Zone colors on the dashboard reflect live moisture status. Deleting a zone does not remove sensor data — nodes become unassigned.
             </DialogDescription>
           </DialogHeader>
 
@@ -114,25 +109,6 @@ export function ZoneManagementPanel({
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
               />
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  type="color"
-                  className="h-9 w-14 cursor-pointer rounded border border-border bg-background p-0.5"
-                  value={normalizeZoneColor(newColor)}
-                  onChange={(e) => setNewColor(normalizeZoneColor(e.target.value))}
-                  aria-label="Zone color"
-                />
-                {PRESET_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`h-8 w-8 rounded-full border-2 ${normalizeZoneColor(newColor) === c ? "border-foreground ring-2 ring-offset-2" : "border-transparent"}`}
-                    style={{ backgroundColor: c }}
-                    onClick={() => setNewColor(c)}
-                    aria-label={`Color ${c}`}
-                  />
-                ))}
-              </div>
               <Button onClick={handleCreate} disabled={busy || !newName.trim()}>
                 Create zone
               </Button>
@@ -155,27 +131,6 @@ export function ZoneManagementPanel({
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                           />
-                          <div className="flex flex-wrap items-center gap-3">
-                            <input
-                              type="color"
-                              className="h-9 w-14 cursor-pointer rounded border border-border bg-background p-0.5"
-                              value={normalizeZoneColor(editColor)}
-                              onChange={(e) =>
-                                setEditColor(normalizeZoneColor(e.target.value))
-                              }
-                              aria-label="Zone color"
-                            />
-                            {PRESET_COLORS.map((c) => (
-                              <button
-                                key={c}
-                                type="button"
-                                className={`h-7 w-7 rounded-full border-2 ${normalizeZoneColor(editColor) === c ? "border-foreground" : "border-transparent"}`}
-                                style={{ backgroundColor: c }}
-                                onClick={() => setEditColor(c)}
-                                aria-label={`Color ${c}`}
-                              />
-                            ))}
-                          </div>
                           <div className="flex gap-2">
                             <Button size="sm" onClick={saveEdit} disabled={busy}>
                               Save
@@ -195,8 +150,11 @@ export function ZoneManagementPanel({
                             <span
                               className="h-4 w-4 rounded-full shrink-0 border border-border/60"
                               style={{
-                                backgroundColor: normalizeZoneColor(z.color),
+                                backgroundColor:
+                                  statusHexByZoneId[z.id] ??
+                                  moistureStatusToChartHex("Optimal"),
                               }}
+                              title="Moisture status"
                             />
                             <div className="min-w-0">
                               <p className="font-semibold truncate">{z.name}</p>

@@ -1,34 +1,55 @@
 {
   "rules": {
     "users": {
+      ".read": true,
+      ".indexOn": [
+        "siteId"
+      ],
       "$uid": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
       }
     },
     "sensor-readings": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      "$siteId": {
+        ".write": true,
+        "gateways": {
+          "$gatewayId": {
+            "$nodeId": {
+              ".indexOn": [".priority"]
+            }
+          }
+        }
+      }
     },
     "serviceData": {
       "sites": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'technician')"
       },
       "sensors": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        "$nodeId": {
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'technician' || (root.child('users').child(auth.uid).child('role').val() === 'customer' && root.child('users').child(auth.uid).child('siteId').val() === newData.child('siteId').val()))"
+        }
       },
       "serviceEvents": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'technician')",
+        "$eventId": {
+          ".write": "auth != null && !data.exists() && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'technician')"
+        }
       },
       "zones": {
         ".read": "auth != null",
+        ".write": "auth != null",
         "$zoneId": {
-          ".write": "auth != null",
-          ".validate": "!newData.exists() || (newData.hasChild('siteId') && newData.child('siteId').isString() && newData.hasChild('name') && newData.hasChild('color'))"
+          ".read": "auth != null",
+          ".write": "auth != null"
         }
+      },
+      "smsRateLimit": {
+        ".read": false,
+        ".write": false
       }
     }
   }
