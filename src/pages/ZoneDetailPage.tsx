@@ -311,7 +311,7 @@ const ZoneDetailPage = () => {
                           (!isOffline &&
                             (packet.status === "Critical: Dry" ||
                               packet.status === "Dry" ||
-                              packet.status === "Saturated"))) && (
+                              packet.status === "Critical: Saturated"))) && (
                           <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
                         )}
                       </div>

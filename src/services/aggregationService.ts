@@ -8,8 +8,7 @@ import {
   getBatteryStatus,
   getMoisturePercent,
   getMoistureStatus,
-  countPacketsReceivedInLast7Days,
-  packetReceptionPercentFromCount,
+  packetReceptionPercentLast7Days,
 } from "@/lib/dataTransform";
 import type { NodeReading, Zone, ZoneSummary } from "@/types/zone";
 import { ref, onValue, get, Unsubscribe } from "firebase/database";
@@ -93,8 +92,7 @@ function buildLatestReadingForNode(
   const bareId = nodeKey.replace(/^nodeId:/, "");
   const packets = parsePacketsFromNode(node);
 
-  const received7d = countPacketsReceivedInLast7Days(packets, realToday);
-  const packetReceptionPercent = packetReceptionPercentFromCount(received7d);
+  const packetReceptionPercent = packetReceptionPercentLast7Days(packets, realToday);
   const signal = packetReceptionPercent;
 
   let latestPacket: NodeReading | null = null;
@@ -148,7 +146,7 @@ function buildDailyHistoryByNode(
   realToday: string,
   nodeLatestDateMap: Record<string, Record<string, string | null>>,
   siteLatestDateKey: string | null
-): Record<string, Record<string, number[]>> {
+): Record<string, Record<string, number>> {
   const historicalDaily: Record<string, Record<string, number[]>> = {};
 
   for (const gatewayId in gatewaysData) {

@@ -2,8 +2,7 @@ import {
     getBatteryStatus,
     getMoisturePercent,
     getMoistureStatus,
-    countPacketsReceivedInLast7Days,
-    packetReceptionPercentFromCount,
+    packetReceptionPercentLast7Days,
 } from "@/lib/dataTransform";
 import { database } from "@/lib/firebase";
 import { ref, onValue, get, Unsubscribe } from "firebase/database";
@@ -73,11 +72,10 @@ export const fetchGatewayDetail = async (
             let packets = node;
             if (node.packets) packets = node.packets;
 
-            const received7d = countPacketsReceivedInLast7Days(
+            const prr = packetReceptionPercentLast7Days(
                 packets as Record<string, Record<string, unknown>>,
                 realToday
             );
-            const prr = packetReceptionPercentFromCount(received7d);
 
             let latestPacket: PacketData | null = null;
             let latestTimestamp = 0;
@@ -190,11 +188,10 @@ export const subscribeToZones = (
                     let packets = node;
                     if (node.packets) packets = node.packets;
 
-                    const received7d = countPacketsReceivedInLast7Days(
+                    const prr = packetReceptionPercentLast7Days(
                         packets as Record<string, Record<string, unknown>>,
                         realToday
                     );
-                    const prr = packetReceptionPercentFromCount(received7d);
 
                     let latestPacket: PacketData | null = null;
                     let latestTimestamp = 0;

@@ -35,20 +35,20 @@ export function getMoisturePercent(soilRaw: number): number {
  */
 export function getBatteryStatus(batteryV: number): {
     voltage: string;
-    status: "Good" | "Fair" | "Low" | "Replace";
+    status: "GOOD" | "FAIR" | "LOW" | "REPLACE";
     color: string;
 } {
-    let status: "Good" | "Fair" | "Low" | "Replace" = "Good";
+    let status: "GOOD" | "FAIR" | "LOW" | "REPLACE" = "GOOD";
     let color = "text-green-600";
 
     if (batteryV < 3.35) {
-        status = "Replace";
+        status = "REPLACE";
         color = "text-red-600";
     } else if (batteryV < 3.42) {
-        status = "Low";
+        status = "LOW";
         color = "text-orange-600";
     } else if (batteryV < 3.5) {
-        status = "Fair";
+        status = "FAIR";
         color = "text-yellow-600";
     }
 
@@ -93,6 +93,63 @@ export function countPacketsReceivedInLast7Days(
         n++;
     }
     return n;
+}
+
+function extractPacketSequence(
+    packetKey: string,
+    rawData: Record<string, unknown>
+): number | null {
+    const fromPayload = Number(rawData.packetId);
+    if (Number.isFinite(fromPayload) && fromPayload >= 0) {
+        return Math.trunc(fromPayload);
+    }
+    const rawKey = packetKey.startsWith("packetId:")
+        ? packetKey.slice("packetId:".length)
+        : packetKey;
+    const fromKey = Number(rawKey);
+    if (Number.isFinite(fromKey) && fromKey >= 0) {
+        return Math.trunc(fromKey);
+    }
+    return null;
+}
+
+/**
+ * Packet reception rate for the last 7 days.
+ * Primary: packetId sequence continuity (received / expected from sequence span).
+ * Fallback: timestamp-window count against fixed expected cadence (84 packets / 7 days).
+ */
+export function packetReceptionPercentLast7Days(
+    packets: Record<string, Record<string, unknown>>,
+    realToday: string
+): number {
+    const nowMs = Date.now();
+    const windowStartMs = nowMs - 7 * 24 * 60 * 60 * 1000;
+    const sequenceIds = new Set<number>();
+
+    for (const packetId in packets) {
+        const rawData = packets[packetId];
+        if (!rawData?.timestamp) continue;
+        const dateKey = String(rawData.timestamp).split("T")[0];
+        if (dateKey > realToday) continue;
+        const ts = new Date(String(rawData.timestamp)).getTime();
+        if (Number.isNaN(ts) || ts <= windowStartMs || ts > nowMs) continue;
+        const seq = extractPacketSequence(packetId, rawData);
+        if (seq != null) sequenceIds.add(seq);
+    }
+
+    if (sequenceIds.size >= 2) {
+        const seqArr = Array.from(sequenceIds);
+        const minId = Math.min(...seqArr);
+        const maxId = Math.max(...seqArr);
+        const expectedBySpan = maxId - minId + 1;
+        if (expectedBySpan >= sequenceIds.size && expectedBySpan > 0) {
+            const pct = (sequenceIds.size / expectedBySpan) * 100;
+            return Math.round(Math.min(100, Math.max(0, pct)) * 10) / 10;
+        }
+    }
+
+    const received = countPacketsReceivedInLast7Days(packets, realToday);
+    return packetReceptionPercentFromCount(received);
 }
 
 /**
