@@ -13,6 +13,16 @@ export interface Zone {
   updatedAt: string;
   /** Alert when zone average moisture (VWC %) drops below this value. */
   moistureThresholdVwc?: number | null;
+  /**
+   * When true, the map draws a pivot annulus (ring) from center + radii instead of a convex hull of nodes.
+   */
+  isCenterPivot?: boolean;
+  centerLat?: number;
+  centerLng?: number;
+  /** Inner radius of the ring (meters). */
+  innerRadiusM?: number;
+  /** Outer radius of the ring (meters). */
+  outerRadiusM?: number;
 }
 
 export interface ZoneSummary extends Zone {

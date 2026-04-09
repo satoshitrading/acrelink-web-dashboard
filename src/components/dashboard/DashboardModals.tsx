@@ -44,11 +44,11 @@ export function DashboardModals() {
         onOpenChange={setZonePanelOpen}
         zones={zones}
         zoneSummaries={zoneSummaries}
-        onCreate={async (name) => {
+        onCreate={async (input) => {
           if (!userSiteId?.trim()) {
             throw new Error("No site selected. Try reloading the dashboard.");
           }
-          await createZone({ name });
+          await createZone(input);
         }}
         onUpdate={updateZone}
         onDelete={deleteZone}

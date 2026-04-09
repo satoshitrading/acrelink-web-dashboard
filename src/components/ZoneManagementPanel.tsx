@@ -11,8 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Zone, ZoneSummary } from "@/types/zone";
+import type { CreateZoneInput, UpdateZoneInput } from "@/services/zoneService";
+import { useToast } from "@/hooks/use-toast";
 import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
 import { Trash2, Pencil } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface ZoneManagementPanelProps {
   open: boolean;
@@ -20,8 +23,8 @@ interface ZoneManagementPanelProps {
   zones: Zone[];
   /** Used to show moisture status colors in the list (same semantics as the field map). */
   zoneSummaries: ZoneSummary[];
-  onCreate: (name: string) => Promise<void>;
-  onUpdate: (zoneId: string, updates: { name?: string }) => Promise<void>;
+  onCreate: (input: Omit<CreateZoneInput, "siteId">) => Promise<void>;
+  onUpdate: (zoneId: string, updates: UpdateZoneInput) => Promise<void>;
   onDelete: (zoneId: string) => Promise<void>;
   onAssignNodes?: (zone: Zone) => void;
 }
@@ -36,7 +39,13 @@ export function ZoneManagementPanel({
   onDelete,
   onAssignNodes,
 }: ZoneManagementPanelProps) {
+  const { toast } = useToast();
   const [newName, setNewName] = useState("");
+  const [createAsPivot, setCreateAsPivot] = useState(false);
+  const [createLat, setCreateLat] = useState("");
+  const [createLng, setCreateLng] = useState("");
+  const [createInner, setCreateInner] = useState("");
+  const [createOuter, setCreateOuter] = useState("");
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -52,10 +61,60 @@ export function ZoneManagementPanel({
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
+    const payload: Omit<CreateZoneInput, "siteId"> = { name: newName.trim() };
+
+    if (createAsPivot) {
+      const lat = Number(createLat.trim());
+      const lng = Number(createLng.trim());
+      const inner = Number(createInner.trim());
+      const outer = Number(createOuter.trim());
+      if (
+        !Number.isFinite(lat) ||
+        lat < -90 ||
+        lat > 90 ||
+        !Number.isFinite(lng) ||
+        lng < -180 ||
+        lng > 180
+      ) {
+        toast({
+          title: "Invalid pivot center",
+          description: "Enter valid latitude (−90–90) and longitude (−180–180).",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!Number.isFinite(inner) || inner < 0) {
+        toast({
+          title: "Invalid inner radius",
+          description: "Inner radius must be a non‑negative number (meters).",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!Number.isFinite(outer) || outer <= inner) {
+        toast({
+          title: "Invalid outer radius",
+          description: "Outer radius must be greater than inner (meters).",
+          variant: "destructive",
+        });
+        return;
+      }
+      payload.isCenterPivot = true;
+      payload.centerLat = lat;
+      payload.centerLng = lng;
+      payload.innerRadiusM = inner;
+      payload.outerRadiusM = outer;
+    }
+
     setBusy(true);
     try {
-      await onCreate(newName.trim());
+      await onCreate(payload);
       setNewName("");
+      setCreateAsPivot(false);
+      setCreateLat("");
+      setCreateLng("");
+      setCreateInner("");
+      setCreateOuter("");
     } finally {
       setBusy(false);
     }
@@ -109,6 +168,70 @@ export function ZoneManagementPanel({
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                The map uses a convex hull of assigned nodes until center pivot is
+                configured. Set ring geometry here at creation, or open a zone from the
+                list below and edit geometry on its detail page.
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <Switch
+                  id="create-pivot"
+                  checked={createAsPivot}
+                  onCheckedChange={setCreateAsPivot}
+                  disabled={busy}
+                />
+                <Label htmlFor="create-pivot" className="font-normal cursor-pointer">
+                  Center pivot — set ring geometry now
+                </Label>
+              </div>
+              {createAsPivot ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <div className="space-y-1">
+                    <Label htmlFor="create-lat" className="text-xs">
+                      Center latitude
+                    </Label>
+                    <Input
+                      id="create-lat"
+                      placeholder="e.g. 41.12"
+                      value={createLat}
+                      onChange={(e) => setCreateLat(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="create-lng" className="text-xs">
+                      Center longitude
+                    </Label>
+                    <Input
+                      id="create-lng"
+                      placeholder="e.g. -98.55"
+                      value={createLng}
+                      onChange={(e) => setCreateLng(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="create-inner" className="text-xs">
+                      Inner radius (m)
+                    </Label>
+                    <Input
+                      id="create-inner"
+                      placeholder="0"
+                      value={createInner}
+                      onChange={(e) => setCreateInner(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="create-outer" className="text-xs">
+                      Outer radius (m)
+                    </Label>
+                    <Input
+                      id="create-outer"
+                      placeholder="e.g. 400"
+                      value={createOuter}
+                      onChange={(e) => setCreateOuter(e.target.value)}
+                    />
+                  </div>
+                </div>
+              ) : null}
               <Button onClick={handleCreate} disabled={busy || !newName.trim()}>
                 Create zone
               </Button>
@@ -161,6 +284,37 @@ export function ZoneManagementPanel({
                               <p className="text-xs text-muted-foreground">
                                 {z.nodeIds.length} node{z.nodeIds.length !== 1 ? "s" : ""}
                               </p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Switch
+                                  id={`pivot-${z.id}`}
+                                  checked={!!z.isCenterPivot}
+                                  onCheckedChange={async (c) => {
+                                    setBusy(true);
+                                    try {
+                                      if (!c) {
+                                        await onUpdate(z.id, {
+                                          isCenterPivot: false,
+                                          centerLat: null,
+                                          centerLng: null,
+                                          innerRadiusM: null,
+                                          outerRadiusM: null,
+                                        });
+                                      } else {
+                                        await onUpdate(z.id, { isCenterPivot: true });
+                                      }
+                                    } finally {
+                                      setBusy(false);
+                                    }
+                                  }}
+                                  disabled={busy}
+                                />
+                                <Label
+                                  htmlFor={`pivot-${z.id}`}
+                                  className="text-xs font-normal cursor-pointer"
+                                >
+                                  Center pivot (set radii on zone page)
+                                </Label>
+                              </div>
                             </div>
                           </div>
                           <div className="flex gap-1 shrink-0">

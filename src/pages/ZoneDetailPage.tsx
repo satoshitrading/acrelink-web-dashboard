@@ -1,8 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Droplet, Battery, Signal, AlertCircle, Loader } from "lucide-react";
+import {
+  ArrowLeft,
+  Droplet,
+  Battery,
+  Signal,
+  AlertCircle,
+  Loader,
+  Download,
+} from "lucide-react";
 import { auth, database } from "@/lib/firebase";
 import { ref, get } from "firebase/database";
 import { getBatteryStatusColor, getSignalStatusColor, getMoistureStatusColors } from "@/lib/sensor-status-utils";
@@ -13,6 +21,16 @@ import { useSensorsThresholdMap } from "@/hooks/useSensorsThresholdMap";
 import { updateSensorMoistureThreshold } from "@/services/zoneService";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useSiteSensorsGps } from "@/hooks/useSiteSensorsGps";
+import {
+  hasValidPivotGeometry,
+  getZoneMapPositions,
+  zoneMapPositionsRenderable,
+  isNodeInZoneGeometry,
+  singleZoneToGeoJSONFeatureCollection,
+  downloadGeoJSONObject,
+} from "@/lib/zone-geometry";
 
 const ZoneDetailPage = () => {
   const { zoneId } = useParams<{ zoneId: string }>();
@@ -56,15 +74,173 @@ const ZoneDetailPage = () => {
     fetchUserSiteId();
   }, [navigate]);
 
-  const { zones, zoneSummaries, allNodeReadings, loading, updateZone } =
-    useZones(userSiteId);
+  const {
+    zones,
+    zoneSummaries,
+    allNodeReadings,
+    loading,
+    updateZone,
+    assignNodesToZone,
+  } = useZones(userSiteId);
+  const { gpsByNodeId } = useSiteSensorsGps(userSiteId);
   const sensorDisplayNames = useSensorDisplayNames(userSiteId);
   const { toast } = useToast();
+
+  const [geomLat, setGeomLat] = useState("");
+  const [geomLng, setGeomLng] = useState("");
+  const [geomInner, setGeomInner] = useState("");
+  const [geomOuter, setGeomOuter] = useState("");
+  const [geomBusy, setGeomBusy] = useState(false);
+  const [spatialBulkBusy, setSpatialBulkBusy] = useState(false);
 
   const zone = useMemo(
     () => zones.find((z) => z.id === zoneId),
     [zones, zoneId]
   );
+
+  useEffect(() => {
+    if (!zone) return;
+    setGeomLat(zone.centerLat != null ? String(zone.centerLat) : "");
+    setGeomLng(zone.centerLng != null ? String(zone.centerLng) : "");
+    setGeomInner(zone.innerRadiusM != null ? String(zone.innerRadiusM) : "");
+    setGeomOuter(zone.outerRadiusM != null ? String(zone.outerRadiusM) : "");
+  }, [
+    zone?.id,
+    zone?.centerLat,
+    zone?.centerLng,
+    zone?.innerRadiusM,
+    zone?.outerRadiusM,
+  ]);
+
+  const handlePivotSwitch = useCallback(
+    async (enabled: boolean) => {
+      if (!zone) return;
+      setGeomBusy(true);
+      try {
+        if (!enabled) {
+          await updateZone(zone.id, {
+            isCenterPivot: false,
+            centerLat: null,
+            centerLng: null,
+            innerRadiusM: null,
+            outerRadiusM: null,
+          });
+          toast({ title: "Saved", description: "Polygon (hull) mode — pivot geometry cleared." });
+        } else {
+          await updateZone(zone.id, { isCenterPivot: true });
+          toast({
+            title: "Center pivot enabled",
+            description: "Enter center and radii below, then save.",
+          });
+        }
+      } finally {
+        setGeomBusy(false);
+      }
+    },
+    [zone, updateZone, toast]
+  );
+
+  const handleSavePivotGeometry = useCallback(async () => {
+    if (!zone) return;
+    const lat = Number(geomLat.trim());
+    const lng = Number(geomLng.trim());
+    const inner = Number(geomInner.trim());
+    const outer = Number(geomOuter.trim());
+    if (
+      !Number.isFinite(lat) ||
+      lat < -90 ||
+      lat > 90 ||
+      !Number.isFinite(lng) ||
+      lng < -180 ||
+      lng > 180
+    ) {
+      toast({
+        title: "Invalid center",
+        description: "Latitude must be −90–90 and longitude −180–180.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!Number.isFinite(inner) || inner < 0) {
+      toast({
+        title: "Invalid inner radius",
+        description: "Use a non‑negative number (meters).",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!Number.isFinite(outer) || outer <= inner) {
+      toast({
+        title: "Invalid outer radius",
+        description: "Outer radius must be greater than inner (meters).",
+        variant: "destructive",
+      });
+      return;
+    }
+    setGeomBusy(true);
+    try {
+      await updateZone(zone.id, {
+        isCenterPivot: true,
+        centerLat: lat,
+        centerLng: lng,
+        innerRadiusM: inner,
+        outerRadiusM: outer,
+      });
+      toast({ title: "Saved", description: "Pivot ring geometry updated." });
+    } finally {
+      setGeomBusy(false);
+    }
+  }, [zone, geomLat, geomLng, geomInner, geomOuter, updateZone, toast]);
+
+  const canSpatialBulkAssign = useMemo(() => {
+    if (!zone) return false;
+    const positions = getZoneMapPositions(zone, gpsByNodeId);
+    return zoneMapPositionsRenderable(positions);
+  }, [zone, gpsByNodeId]);
+
+  const handleDownloadZoneGeoJSON = useCallback(() => {
+    if (!zone) return;
+    const fc = singleZoneToGeoJSONFeatureCollection(zone, gpsByNodeId);
+    downloadGeoJSONObject(`zone-${zone.id}`, fc);
+    toast({
+      title: "Download started",
+      description: "GeoJSON includes hull or annulus when geometry is available.",
+    });
+  }, [zone, gpsByNodeId, toast]);
+
+  const handleBulkAddNodesInGeometry = useCallback(async () => {
+    if (!zone) return;
+    setSpatialBulkBusy(true);
+    try {
+      const toAdd: string[] = [];
+      for (const nid of Object.keys(gpsByNodeId)) {
+        if (zone.nodeIds.includes(nid)) continue;
+        if (isNodeInZoneGeometry(zone, nid, gpsByNodeId)) toAdd.push(nid);
+      }
+      if (toAdd.length === 0) {
+        toast({
+          title: "No nodes to add",
+          description:
+            "No other site nodes with GPS fall inside this zone’s ring or hull.",
+        });
+        return;
+      }
+      await assignNodesToZone(zone.id, [...new Set([...zone.nodeIds, ...toAdd])]);
+      toast({
+        title: "Nodes assigned",
+        description: `Added ${toAdd.length} node(s) to this zone.`,
+      });
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Assignment failed",
+        description: "Could not update zone membership.",
+        variant: "destructive",
+      });
+    } finally {
+      setSpatialBulkBusy(false);
+    }
+  }, [zone, gpsByNodeId, assignNodesToZone, toast]);
 
   const zoneStatusHex = useMemo(() => {
     const s = zoneSummaries.find((z) => z.id === zoneId);
@@ -156,6 +332,134 @@ const ZoneDetailPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        <Card className="border-2 mb-8">
+          <CardContent className="p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-display font-bold text-foreground mb-2">
+                Field map geometry
+              </h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                By default the map draws a convex hull around nodes assigned to this zone.
+                For center‑pivot (irrigation) fields, switch on and set the pivot center and
+                inner/outer radii so the map shows a ring (annulus) instead.
+              </p>
+              <div className="flex items-center gap-3 mb-4">
+                <Switch
+                  id="zone-pivot-mode"
+                  checked={!!zone.isCenterPivot}
+                  onCheckedChange={(v) => void handlePivotSwitch(v)}
+                  disabled={geomBusy}
+                />
+                <Label htmlFor="zone-pivot-mode" className="cursor-pointer">
+                  Center pivot zone (ring on map)
+                </Label>
+              </div>
+              {zone.isCenterPivot ? (
+                <div className="space-y-3 max-w-lg">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="geom-lat">Center latitude</Label>
+                      <input
+                        id="geom-lat"
+                        type="text"
+                        inputMode="decimal"
+                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                        value={geomLat}
+                        onChange={(e) => setGeomLat(e.target.value)}
+                        placeholder="e.g. 41.1234"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="geom-lng">Center longitude</Label>
+                      <input
+                        id="geom-lng"
+                        type="text"
+                        inputMode="decimal"
+                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                        value={geomLng}
+                        onChange={(e) => setGeomLng(e.target.value)}
+                        placeholder="e.g. -98.5678"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="geom-inner">Inner radius (m)</Label>
+                      <input
+                        id="geom-inner"
+                        type="text"
+                        inputMode="decimal"
+                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                        value={geomInner}
+                        onChange={(e) => setGeomInner(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="geom-outer">Outer radius (m)</Label>
+                      <input
+                        id="geom-outer"
+                        type="text"
+                        inputMode="decimal"
+                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                        value={geomOuter}
+                        onChange={(e) => setGeomOuter(e.target.value)}
+                        placeholder="e.g. 400"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void handleSavePivotGeometry()}
+                      disabled={geomBusy}
+                    >
+                      Save pivot geometry
+                    </Button>
+                    {!hasValidPivotGeometry(zone) ? (
+                      <span className="text-xs text-amber-700 dark:text-amber-300">
+                        Enter valid center and radii to show the ring on the map.
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+              <div className="pt-4 mt-4 border-t border-border space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Export and spatial assignment
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadZoneGeoJSON}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download this zone (GeoJSON)
+                  </Button>
+                  {canSpatialBulkAssign ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={geomBusy || spatialBulkBusy}
+                      onClick={() => void handleBulkAddNodesInGeometry()}
+                    >
+                      Add site nodes in {zone.isCenterPivot ? "ring" : "hull"}
+                    </Button>
+                  ) : null}
+                </div>
+                <p className="text-xs text-muted-foreground max-w-xl">
+                  GeoJSON follows RFC 7946 (lon/lat). Pivot zones export as a polygon with a
+                  hole. &quot;Add site nodes&quot; uses GPS only: nodes already in this zone
+                  are skipped; others on the site are added if they lie inside the ring or
+                  convex hull.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="border-2 mb-8">
           <CardContent className="p-6 space-y-6">
             <div>

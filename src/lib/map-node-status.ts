@@ -1,4 +1,5 @@
 import type { NodeReading } from "@/types/zone";
+import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
 
 /** Map marker legend categories (milestone: green ok, yellow warn, red dry, gray offline). */
 export type MapNodeStatusCategory = "offline" | "dry" | "warn" | "ok";
@@ -32,3 +33,9 @@ export const MAP_MARKER_COLORS: Record<MapNodeStatusCategory, string> = {
   warn: "#eab308",
   dry: "#ef4444",
 };
+
+/** Marker fill color aligned with charts / zone cards (`moistureStatusToChartHex`). */
+export function mapNodeMarkerFillHex(reading: NodeReading | undefined): string {
+  if (!reading || !reading.online) return "#6b7280";
+  return moistureStatusToChartHex(reading.status);
+}

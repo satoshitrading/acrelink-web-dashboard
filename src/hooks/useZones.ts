@@ -51,9 +51,9 @@ export function useZones(siteId: string | null) {
   }, [aggregated.allNodeReadings, assignedNodeIds]);
 
   const createZone = useCallback(
-    async (input: Omit<CreateZoneInput, "siteId">) => {
-      if (!siteId) return;
-      await createZoneApi({ ...input, siteId });
+    async (input: Omit<CreateZoneInput, "siteId">): Promise<string | undefined> => {
+      if (!siteId) return undefined;
+      return createZoneApi({ ...input, siteId });
     },
     [siteId]
   );

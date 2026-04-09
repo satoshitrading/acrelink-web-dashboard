@@ -72,10 +72,30 @@ export type CreateZoneInput = {
   /** Stored in RTDB for legacy compatibility; UI defaults when omitted. */
   color?: string;
   nodeIds?: string[];
-};
+} & Partial<
+  Pick<
+    Zone,
+    | "isCenterPivot"
+    | "centerLat"
+    | "centerLng"
+    | "innerRadiusM"
+    | "outerRadiusM"
+  >
+>;
 
 export type UpdateZoneInput = Partial<
-  Pick<Zone, "name" | "color" | "nodeIds" | "moistureThresholdVwc">
+  Pick<
+    Zone,
+    | "name"
+    | "color"
+    | "nodeIds"
+    | "moistureThresholdVwc"
+    | "isCenterPivot"
+    | "centerLat"
+    | "centerLng"
+    | "innerRadiusM"
+    | "outerRadiusM"
+  >
 >;
 
 function normalizeNodeIds(ids: string[] | undefined): string[] {
@@ -90,6 +110,47 @@ function parseOptionalThreshold(
   if (raw === null) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : undefined;
+}
+
+function parseOptionalFiniteNumber(
+  raw: unknown
+): number | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function parseOptionalPivot(val: Record<string, unknown>): Partial<
+  Pick<
+    Zone,
+    | "isCenterPivot"
+    | "centerLat"
+    | "centerLng"
+    | "innerRadiusM"
+    | "outerRadiusM"
+  >
+> {
+  const out: Partial<
+    Pick<
+      Zone,
+      | "isCenterPivot"
+      | "centerLat"
+      | "centerLng"
+      | "innerRadiusM"
+      | "outerRadiusM"
+    >
+  > = {};
+  if (val.isCenterPivot === true) out.isCenterPivot = true;
+  else if (val.isCenterPivot === false) out.isCenterPivot = false;
+  const lat = parseOptionalFiniteNumber(val.centerLat);
+  const lng = parseOptionalFiniteNumber(val.centerLng);
+  const inner = parseOptionalFiniteNumber(val.innerRadiusM);
+  const outer = parseOptionalFiniteNumber(val.outerRadiusM);
+  if (lat !== undefined) out.centerLat = lat;
+  if (lng !== undefined) out.centerLng = lng;
+  if (inner !== undefined) out.innerRadiusM = inner;
+  if (outer !== undefined) out.outerRadiusM = outer;
+  return out;
 }
 
 /**
@@ -116,6 +177,7 @@ export function subscribeToSiteZones(
         const moistureThresholdVwc = parseOptionalThreshold(
           val.moistureThresholdVwc
         );
+        const pivot = parseOptionalPivot(val);
         list.push({
           id,
           name: String(val.name ?? ""),
@@ -131,6 +193,7 @@ export function subscribeToSiteZones(
           ...(moistureThresholdVwc !== undefined
             ? { moistureThresholdVwc }
             : {}),
+          ...pivot,
         });
       }
       callback(list);
@@ -149,14 +212,21 @@ export async function createZone(input: CreateZoneInput): Promise<string> {
   const zoneId = newRef.key;
   if (!zoneId) throw new Error("Failed to generate zone id");
 
-  await set(newRef, {
+  const payload: Record<string, unknown> = {
     name: input.name.trim(),
     color: normalizeZoneColor(input.color ?? DEFAULT_ZONE_COLOR),
     siteId: input.siteId,
     nodeIds: normalizeNodeIds(input.nodeIds),
     createdAt: now,
     updatedAt: now,
-  });
+  };
+  if (input.isCenterPivot === true) payload.isCenterPivot = true;
+  if (input.centerLat !== undefined) payload.centerLat = input.centerLat;
+  if (input.centerLng !== undefined) payload.centerLng = input.centerLng;
+  if (input.innerRadiusM !== undefined) payload.innerRadiusM = input.innerRadiusM;
+  if (input.outerRadiusM !== undefined) payload.outerRadiusM = input.outerRadiusM;
+
+  await set(newRef, payload);
 
   return zoneId;
 }
@@ -177,6 +247,33 @@ export async function updateZone(
   if (updates.moistureThresholdVwc !== undefined) {
     const v = updates.moistureThresholdVwc;
     payload.moistureThresholdVwc = v === null || v === undefined ? null : v;
+  }
+  if (updates.isCenterPivot !== undefined) {
+    payload.isCenterPivot = updates.isCenterPivot;
+  }
+  if (updates.centerLat !== undefined) {
+    payload.centerLat =
+      updates.centerLat === null || updates.centerLat === undefined
+        ? null
+        : updates.centerLat;
+  }
+  if (updates.centerLng !== undefined) {
+    payload.centerLng =
+      updates.centerLng === null || updates.centerLng === undefined
+        ? null
+        : updates.centerLng;
+  }
+  if (updates.innerRadiusM !== undefined) {
+    payload.innerRadiusM =
+      updates.innerRadiusM === null || updates.innerRadiusM === undefined
+        ? null
+        : updates.innerRadiusM;
+  }
+  if (updates.outerRadiusM !== undefined) {
+    payload.outerRadiusM =
+      updates.outerRadiusM === null || updates.outerRadiusM === undefined
+        ? null
+        : updates.outerRadiusM;
   }
 
   await update(zoneRef, payload);
