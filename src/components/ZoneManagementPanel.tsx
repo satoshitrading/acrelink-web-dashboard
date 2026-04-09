@@ -42,10 +42,6 @@ export function ZoneManagementPanel({
   const { toast } = useToast();
   const [newName, setNewName] = useState("");
   const [createAsPivot, setCreateAsPivot] = useState(false);
-  const [createLat, setCreateLat] = useState("");
-  const [createLng, setCreateLng] = useState("");
-  const [createInner, setCreateInner] = useState("");
-  const [createOuter, setCreateOuter] = useState("");
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -64,46 +60,7 @@ export function ZoneManagementPanel({
     const payload: Omit<CreateZoneInput, "siteId"> = { name: newName.trim() };
 
     if (createAsPivot) {
-      const lat = Number(createLat.trim());
-      const lng = Number(createLng.trim());
-      const inner = Number(createInner.trim());
-      const outer = Number(createOuter.trim());
-      if (
-        !Number.isFinite(lat) ||
-        lat < -90 ||
-        lat > 90 ||
-        !Number.isFinite(lng) ||
-        lng < -180 ||
-        lng > 180
-      ) {
-        toast({
-          title: "Invalid pivot center",
-          description: "Enter valid latitude (−90–90) and longitude (−180–180).",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (!Number.isFinite(inner) || inner < 0) {
-        toast({
-          title: "Invalid inner radius",
-          description: "Inner radius must be a non‑negative number (meters).",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (!Number.isFinite(outer) || outer <= inner) {
-        toast({
-          title: "Invalid outer radius",
-          description: "Outer radius must be greater than inner (meters).",
-          variant: "destructive",
-        });
-        return;
-      }
       payload.isCenterPivot = true;
-      payload.centerLat = lat;
-      payload.centerLng = lng;
-      payload.innerRadiusM = inner;
-      payload.outerRadiusM = outer;
     }
 
     setBusy(true);
@@ -111,10 +68,6 @@ export function ZoneManagementPanel({
       await onCreate(payload);
       setNewName("");
       setCreateAsPivot(false);
-      setCreateLat("");
-      setCreateLng("");
-      setCreateInner("");
-      setCreateOuter("");
     } finally {
       setBusy(false);
     }
@@ -169,9 +122,9 @@ export function ZoneManagementPanel({
                 onChange={(e) => setNewName(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                The map uses a convex hull of assigned nodes until center pivot is
-                configured. Set ring geometry here at creation, or open a zone from the
-                list below and edit geometry on its detail page.
+                The map uses a convex hull of assigned nodes until center pivot geometry
+                is set. Open the zone from the list below and use the map on the zone page
+                to place the pivot and ring.
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <Switch
@@ -181,56 +134,14 @@ export function ZoneManagementPanel({
                   disabled={busy}
                 />
                 <Label htmlFor="create-pivot" className="font-normal cursor-pointer">
-                  Center pivot — set ring geometry now
+                  Center pivot zone (configure ring on zone page)
                 </Label>
               </div>
               {createAsPivot ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  <div className="space-y-1">
-                    <Label htmlFor="create-lat" className="text-xs">
-                      Center latitude
-                    </Label>
-                    <Input
-                      id="create-lat"
-                      placeholder="e.g. 41.12"
-                      value={createLat}
-                      onChange={(e) => setCreateLat(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="create-lng" className="text-xs">
-                      Center longitude
-                    </Label>
-                    <Input
-                      id="create-lng"
-                      placeholder="e.g. -98.55"
-                      value={createLng}
-                      onChange={(e) => setCreateLng(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="create-inner" className="text-xs">
-                      Inner radius (m)
-                    </Label>
-                    <Input
-                      id="create-inner"
-                      placeholder="0"
-                      value={createInner}
-                      onChange={(e) => setCreateInner(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="create-outer" className="text-xs">
-                      Outer radius (m)
-                    </Label>
-                    <Input
-                      id="create-outer"
-                      placeholder="e.g. 400"
-                      value={createOuter}
-                      onChange={(e) => setCreateOuter(e.target.value)}
-                    />
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground pt-1">
+                  After creating, open this zone and use the field map to click the pivot
+                  center and adjust inner/outer radius before saving.
+                </p>
               ) : null}
               <Button onClick={handleCreate} disabled={busy || !newName.trim()}>
                 Create zone

@@ -280,7 +280,18 @@ export async function updateZone(
 }
 
 export async function deleteZone(zoneId: string): Promise<void> {
-  await remove(ref(database, `${ZONES_PATH}/${zoneId}`));
+  const zoneRef = ref(database, `${ZONES_PATH}/${zoneId}`);
+  const zoneSnap = await get(zoneRef);
+  const zoneSiteId = zoneSnap.exists()
+    ? String((zoneSnap.val() as Record<string, unknown>)?.siteId ?? "")
+    : "";
+
+  await remove(zoneRef);
+
+  if (zoneSiteId.trim()) {
+    // Keep auto-generated sensor names consistent after nodes become unassigned.
+    await syncSensorDisplayNamesAfterZoneAssign([], zoneSiteId, "");
+  }
 }
 
 /**

@@ -205,3 +205,9 @@ flex-wrap: wrap !important;
 
 
 }
+
+/* Leaflet divIcon: remove default square frame for pivot editor handles */
+.acrelink-leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}

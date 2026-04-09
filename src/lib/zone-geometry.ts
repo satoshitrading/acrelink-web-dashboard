@@ -22,7 +22,7 @@ export function haversineDistanceMeters(
 }
 
 /** Destination point given start lat/lng, initial bearing (degrees clockwise from north), distance (m). */
-function destinationPoint(
+export function destinationPointMeters(
   latDeg: number,
   lngDeg: number,
   bearingDeg: number,
@@ -65,12 +65,12 @@ export function buildAnnulusPolygonPositions(
   const inner: [number, number][] = [];
   for (let i = 0; i < n; i++) {
     const bearing = (i / n) * 360;
-    outer.push(destinationPoint(centerLat, centerLng, bearing, outerRadiusM));
+    outer.push(destinationPointMeters(centerLat, centerLng, bearing, outerRadiusM));
   }
   if (outer.length >= 3) outer.push([...outer[0]]);
   for (let i = n - 1; i >= 0; i--) {
     const bearing = (i / n) * 360;
-    inner.push(destinationPoint(centerLat, centerLng, bearing, innerRadiusM));
+    inner.push(destinationPointMeters(centerLat, centerLng, bearing, innerRadiusM));
   }
   if (inner.length >= 3) inner.push([...inner[0]]);
   return [outer, inner];

@@ -1,15 +1,22 @@
-import { useEffect, useMemo, useCallback, useState, useRef } from "react";
+import { useMemo, useCallback, useState } from "react";
 import {
   MapContainer,
-  TileLayer,
   CircleMarker,
   Polygon,
   Popup,
-  useMap,
 } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
-import { LatLngBounds } from "leaflet";
-import "leaflet/dist/leaflet.css";
+import {
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+  PANE_ZONES,
+  PANE_NODES,
+  MapInteractionPanes,
+  ResilientBasemapLayer,
+  FitBounds,
+  LocateMeMapControl,
+  type BasemapPreset,
+} from "@/components/map/fieldMapMapShell";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashboard } from "@/contexts/dashboard/DashboardContext";
-import { Download, LocateFixed } from "lucide-react";
+import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { useSiteSensorsGps } from "@/hooks/useSiteSensorsGps";
 import type { Zone } from "@/types/zone";
@@ -41,176 +48,6 @@ import {
   pointInPolygonRing,
   type ZoneMapPositions,
 } from "@/lib/zone-geometry";
-
-const DEFAULT_CENTER: [number, number] = [39.8283, -98.5795];
-const DEFAULT_ZOOM = 4;
-const LOCATE_ME_ZOOM = 15;
-
-const PANE_ZONES = "acrelinkZones";
-const PANE_NODES = "acrelinkNodes";
-
-function MapInteractionPanes() {
-  const map = useMap();
-  useEffect(() => {
-    if (!map.getPane(PANE_ZONES)) {
-      const p = map.createPane(PANE_ZONES);
-      p.style.zIndex = "450";
-    }
-    if (!map.getPane(PANE_NODES)) {
-      const p = map.createPane(PANE_NODES);
-      p.style.zIndex = "650";
-    }
-  }, [map]);
-  return null;
-}
-
-type BasemapPreset = {
-  id: string;
-  url: string;
-  attribution: string;
-  maxZoom: number;
-  maxNativeZoom: number;
-  /** False when not aerial imagery (e.g. OSM streets). */
-  isSatellite: boolean;
-};
-
-function buildBasemapPresets(): BasemapPreset[] {
-  return [
-    {
-      id: "esri-services",
-      url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      attribution:
-        'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-      maxZoom: 19,
-      maxNativeZoom: 19,
-      isSatellite: true,
-    },
-    {
-      id: "esri-server",
-      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      attribution:
-        'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-      maxZoom: 19,
-      maxNativeZoom: 19,
-      isSatellite: true,
-    },
-    {
-      id: "osm-streets",
-      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
-      maxNativeZoom: 19,
-      isSatellite: false,
-    },
-  ];
-}
-
-const TILE_ERRORS_BEFORE_FALLBACK = 12;
-
-/** Tries satellite sources in order; falls back to OSM streets if tiles keep failing (e.g. ERR_CONNECTION_CLOSED to Esri). */
-function ResilientBasemapLayer({
-  onActivePresetChange,
-}: {
-  onActivePresetChange?: (preset: BasemapPreset) => void;
-}) {
-  const presets = useMemo(() => buildBasemapPresets(), []);
-  const [index, setIndex] = useState(0);
-  const errorStreakRef = useRef(0);
-  const preset = presets[Math.min(index, presets.length - 1)];
-
-  useEffect(() => {
-    onActivePresetChange?.(preset);
-  }, [preset, onActivePresetChange]);
-
-  const bumpFallback = useCallback(() => {
-    setIndex((i) => {
-      if (i >= presets.length - 1) return i;
-      return i + 1;
-    });
-    errorStreakRef.current = 0;
-  }, [presets.length]);
-
-  return (
-    <TileLayer
-      key={preset.id}
-      url={preset.url}
-      attribution={preset.attribution}
-      maxZoom={preset.maxZoom}
-      maxNativeZoom={preset.maxNativeZoom}
-      eventHandlers={{
-        tileerror: () => {
-          errorStreakRef.current += 1;
-          if (errorStreakRef.current >= TILE_ERRORS_BEFORE_FALLBACK) {
-            bumpFallback();
-          }
-        },
-        tileload: () => {
-          errorStreakRef.current = 0;
-        },
-      }}
-    />
-  );
-}
-
-function FitBounds({ positions }: { positions: [number, number][] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (positions.length === 0) return;
-    if (positions.length === 1) {
-      map.setView(positions[0], 12);
-      return;
-    }
-    const b = new LatLngBounds(positions);
-    map.fitBounds(b, { padding: [28, 28], maxZoom: 15 });
-  }, [map, positions]);
-  return null;
-}
-
-/** Leaflet-positioned control; must be rendered inside MapContainer. */
-function LocateMeMapControl() {
-  const map = useMap();
-  const [busy, setBusy] = useState(false);
-
-  const handleClick = useCallback(() => {
-    if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported in this browser.");
-      return;
-    }
-    setBusy(true);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        map.flyTo([coords.latitude, coords.longitude], LOCATE_ME_ZOOM);
-        setBusy(false);
-      },
-      (err) => {
-        setBusy(false);
-        toast.error(
-          err.message ? `Location error: ${err.message}` : "Could not get your location."
-        );
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 }
-    );
-  }, [map]);
-
-  return (
-    <div className="leaflet-top leaflet-right" style={{ margin: 12 }}>
-      <div className="leaflet-control leaflet-bar">
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          className="h-9 w-9 rounded-sm border-0 bg-background shadow-sm hover:bg-muted"
-          disabled={busy}
-          aria-label="Locate me — center map on my position"
-          onClick={handleClick}
-        >
-          <LocateFixed className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 /** Polygon stroke/fill: custom stored color when set; otherwise moisture status (default stored color counts as unset). */
 function zonePolygonHex(zone: Zone, moistureStatus: string): string {
@@ -515,21 +352,21 @@ export function FieldMapPanel() {
       </CardHeader>
       <CardContent className="pt-0">
         {!userSiteId || zoneSectionLoading || gpsLoading ? (
-          <div className="h-[380px] flex items-center justify-center rounded-lg border border-border bg-muted/30 text-muted-foreground text-sm">
+          <div className="h-[620px] flex items-center justify-center rounded-lg border border-border bg-muted/30 text-muted-foreground text-sm">
             Loading map…
           </div>
         ) : !showMap ? (
-          <div className="h-[380px] flex items-center justify-center rounded-lg border border-border bg-muted/30 text-muted-foreground text-sm text-center px-4">
+          <div className="h-[620px] flex items-center justify-center rounded-lg border border-border bg-muted/30 text-muted-foreground text-sm text-center px-4">
             No GPS coordinates yet for this site and no drawable zone geometry.
             Capture locations on the Service page or configure a center-pivot
             zone on the zone page.
           </div>
         ) : (
           <div className="space-y-2">
-          <div className="h-[380px] w-full rounded-lg overflow-hidden border border-border z-0">
+          <div className="h-[620px] w-full rounded-lg overflow-hidden border border-border z-0">
             <MapContainer
-              center={DEFAULT_CENTER}
-              zoom={DEFAULT_ZOOM}
+              center={DEFAULT_MAP_CENTER}
+              zoom={DEFAULT_MAP_ZOOM}
               className="h-full w-full z-0"
               scrollWheelZoom
             >

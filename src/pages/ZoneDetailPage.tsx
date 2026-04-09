@@ -23,6 +23,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useSiteSensorsGps } from "@/hooks/useSiteSensorsGps";
+import { PivotGeometryMapEditor } from "@/components/map/PivotGeometryMapEditor";
+import type { PivotGeometryDraft } from "@/components/map/PivotGeometryMapEditor";
+import {
+  clampPivotRadii,
+  PIVOT_DEFAULT_INNER_M,
+  PIVOT_DEFAULT_OUTER_M,
+} from "@/lib/pivot-geometry";
 import {
   hasValidPivotGeometry,
   getZoneMapPositions,
@@ -82,7 +89,7 @@ const ZoneDetailPage = () => {
     updateZone,
     assignNodesToZone,
   } = useZones(userSiteId);
-  const { gpsByNodeId } = useSiteSensorsGps(userSiteId);
+  const { gpsByNodeId, loading: gpsLoading } = useSiteSensorsGps(userSiteId);
   const sensorDisplayNames = useSensorDisplayNames(userSiteId);
   const { toast } = useToast();
 
@@ -92,6 +99,8 @@ const ZoneDetailPage = () => {
   const [geomOuter, setGeomOuter] = useState("");
   const [geomBusy, setGeomBusy] = useState(false);
   const [spatialBulkBusy, setSpatialBulkBusy] = useState(false);
+  /** Bumps so Radix sliders remount when `value` changes from outside the slider (zone load, Advanced fields, first center). */
+  const [pivotRadiusControlsEpoch, setPivotRadiusControlsEpoch] = useState(0);
 
   const zone = useMemo(
     () => zones.find((z) => z.id === zoneId),
@@ -102,15 +111,87 @@ const ZoneDetailPage = () => {
     if (!zone) return;
     setGeomLat(zone.centerLat != null ? String(zone.centerLat) : "");
     setGeomLng(zone.centerLng != null ? String(zone.centerLng) : "");
-    setGeomInner(zone.innerRadiusM != null ? String(zone.innerRadiusM) : "");
-    setGeomOuter(zone.outerRadiusM != null ? String(zone.outerRadiusM) : "");
+    setGeomInner(
+      zone.innerRadiusM != null && Number.isFinite(zone.innerRadiusM)
+        ? String(zone.innerRadiusM)
+        : zone.isCenterPivot
+          ? String(PIVOT_DEFAULT_INNER_M)
+          : ""
+    );
+    setGeomOuter(
+      zone.outerRadiusM != null && Number.isFinite(zone.outerRadiusM)
+        ? String(zone.outerRadiusM)
+        : zone.isCenterPivot
+          ? String(PIVOT_DEFAULT_OUTER_M)
+          : ""
+    );
+    // Radix Slider thumbs do not always pick up controlled `value` updates unless remounted.
+    if (zone.isCenterPivot) setPivotRadiusControlsEpoch((n) => n + 1);
   }, [
     zone?.id,
     zone?.centerLat,
     zone?.centerLng,
     zone?.innerRadiusM,
     zone?.outerRadiusM,
+    zone?.isCenterPivot,
   ]);
+
+  const pivotDraft: PivotGeometryDraft = useMemo(() => {
+    const lat = Number(geomLat.trim());
+    const lng = Number(geomLng.trim());
+    // Empty fields must not be parsed as 0 — that desynced sliders vs Advanced inputs.
+    const inner =
+      geomInner.trim() === "" ? NaN : Number(geomInner.trim());
+    const outer =
+      geomOuter.trim() === "" ? NaN : Number(geomOuter.trim());
+    const inner0 = Number.isFinite(inner) ? inner : PIVOT_DEFAULT_INNER_M;
+    const outer0 = Number.isFinite(outer) ? outer : PIVOT_DEFAULT_OUTER_M;
+    const radii = clampPivotRadii(inner0, outer0);
+    return {
+      centerLat: Number.isFinite(lat) && geomLat.trim() !== "" ? lat : null,
+      centerLng: Number.isFinite(lng) && geomLng.trim() !== "" ? lng : null,
+      innerRadiusM: radii.inner,
+      outerRadiusM: radii.outer,
+    };
+  }, [geomLat, geomLng, geomInner, geomOuter]);
+
+  const clampGeomRadiusFieldsToValid = useCallback(() => {
+    const a =
+      geomInner.trim() === "" ? NaN : Number(geomInner.trim());
+    const b =
+      geomOuter.trim() === "" ? NaN : Number(geomOuter.trim());
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return;
+    const c = clampPivotRadii(a, b);
+    setGeomInner(String(c.inner));
+    setGeomOuter(String(c.outer));
+  }, [geomInner, geomOuter]);
+
+  const bumpPivotRadiusSliders = useCallback(() => {
+    setPivotRadiusControlsEpoch((n) => n + 1);
+  }, []);
+
+  const handlePivotDraftChange = useCallback((patch: Partial<PivotGeometryDraft>) => {
+    if (patch.centerLat !== undefined) {
+      setGeomLat(
+        patch.centerLat == null || !Number.isFinite(patch.centerLat)
+          ? ""
+          : String(Number(patch.centerLat.toFixed(8)))
+      );
+    }
+    if (patch.centerLng !== undefined) {
+      setGeomLng(
+        patch.centerLng == null || !Number.isFinite(patch.centerLng)
+          ? ""
+          : String(Number(patch.centerLng.toFixed(8)))
+      );
+    }
+    if (patch.innerRadiusM !== undefined) {
+      setGeomInner(String(patch.innerRadiusM));
+    }
+    if (patch.outerRadiusM !== undefined) {
+      setGeomOuter(String(patch.outerRadiusM));
+    }
+  }, []);
 
   const handlePivotSwitch = useCallback(
     async (enabled: boolean) => {
@@ -128,24 +209,29 @@ const ZoneDetailPage = () => {
           toast({ title: "Saved", description: "Polygon (hull) mode — pivot geometry cleared." });
         } else {
           await updateZone(zone.id, { isCenterPivot: true });
+          setGeomInner((prev) => (prev.trim() === "" ? String(PIVOT_DEFAULT_INNER_M) : prev));
+          setGeomOuter((prev) => (prev.trim() === "" ? String(PIVOT_DEFAULT_OUTER_M) : prev));
+          bumpPivotRadiusSliders();
           toast({
             title: "Center pivot enabled",
-            description: "Enter center and radii below, then save.",
+            description: "Place the center on the map, adjust the ring, then save.",
           });
         }
       } finally {
         setGeomBusy(false);
       }
     },
-    [zone, updateZone, toast]
+    [zone, updateZone, toast, bumpPivotRadiusSliders]
   );
 
   const handleSavePivotGeometry = useCallback(async () => {
     if (!zone) return;
     const lat = Number(geomLat.trim());
     const lng = Number(geomLng.trim());
-    const inner = Number(geomInner.trim());
-    const outer = Number(geomOuter.trim());
+    const inner =
+      geomInner.trim() === "" ? NaN : Number(geomInner.trim());
+    const outer =
+      geomOuter.trim() === "" ? NaN : Number(geomOuter.trim());
     if (
       !Number.isFinite(lat) ||
       lat < -90 ||
@@ -161,15 +247,15 @@ const ZoneDetailPage = () => {
       });
       return;
     }
-    if (!Number.isFinite(inner) || inner < 0) {
+    if (geomInner.trim() === "" || !Number.isFinite(inner) || inner < 0) {
       toast({
         title: "Invalid inner radius",
-        description: "Use a non‑negative number (meters).",
+        description: "Enter a non‑negative number (meters).",
         variant: "destructive",
       });
       return;
     }
-    if (!Number.isFinite(outer) || outer <= inner) {
+    if (geomOuter.trim() === "" || !Number.isFinite(outer) || outer <= inner) {
       toast({
         title: "Invalid outer radius",
         description: "Outer radius must be greater than inner (meters).",
@@ -177,20 +263,24 @@ const ZoneDetailPage = () => {
       });
       return;
     }
+    const radii = clampPivotRadii(inner, outer);
     setGeomBusy(true);
     try {
       await updateZone(zone.id, {
         isCenterPivot: true,
         centerLat: lat,
         centerLng: lng,
-        innerRadiusM: inner,
-        outerRadiusM: outer,
+        innerRadiusM: radii.inner,
+        outerRadiusM: radii.outer,
       });
+      setGeomInner(String(radii.inner));
+      setGeomOuter(String(radii.outer));
+      bumpPivotRadiusSliders();
       toast({ title: "Saved", description: "Pivot ring geometry updated." });
     } finally {
       setGeomBusy(false);
     }
-  }, [zone, geomLat, geomLng, geomInner, geomOuter, updateZone, toast]);
+  }, [zone, geomLat, geomLng, geomInner, geomOuter, updateZone, toast, bumpPivotRadiusSliders]);
 
   const canSpatialBulkAssign = useMemo(() => {
     if (!zone) return false;
@@ -340,8 +430,8 @@ const ZoneDetailPage = () => {
               </h2>
               <p className="text-sm text-muted-foreground mb-4">
                 By default the map draws a convex hull around nodes assigned to this zone.
-                For center‑pivot (irrigation) fields, switch on and set the pivot center and
-                inner/outer radii so the map shows a ring (annulus) instead.
+                For center‑pivot fields, switch on and use the map to place the pivot center and
+                adjust the ring; save when it matches your field.
               </p>
               <div className="flex items-center gap-3 mb-4">
                 <Switch
@@ -355,56 +445,85 @@ const ZoneDetailPage = () => {
                 </Label>
               </div>
               {zone.isCenterPivot ? (
-                <div className="space-y-3 max-w-lg">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="geom-lat">Center latitude</Label>
-                      <input
-                        id="geom-lat"
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                        value={geomLat}
-                        onChange={(e) => setGeomLat(e.target.value)}
-                        placeholder="e.g. 41.1234"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="geom-lng">Center longitude</Label>
-                      <input
-                        id="geom-lng"
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                        value={geomLng}
-                        onChange={(e) => setGeomLng(e.target.value)}
-                        placeholder="e.g. -98.5678"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="geom-inner">Inner radius (m)</Label>
-                      <input
-                        id="geom-inner"
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                        value={geomInner}
-                        onChange={(e) => setGeomInner(e.target.value)}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="geom-outer">Outer radius (m)</Label>
-                      <input
-                        id="geom-outer"
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                        value={geomOuter}
-                        onChange={(e) => setGeomOuter(e.target.value)}
-                        placeholder="e.g. 400"
-                      />
-                    </div>
+                <div className="space-y-4">
+                  {gpsLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading site map…</p>
+                  ) : (
+                    <PivotGeometryMapEditor
+                      key={zone.id}
+                      draft={pivotDraft}
+                      onDraftChange={handlePivotDraftChange}
+                      onPivotCenterFirstPlaced={bumpPivotRadiusSliders}
+                      gpsByNodeId={gpsByNodeId}
+                      zoneNodeIds={zone.nodeIds}
+                      previewRingColor={zone.color?.trim() || undefined}
+                      radiusControlsEpoch={pivotRadiusControlsEpoch}
+                    />
+                  )}
+                  <div className="max-w-lg border border-border rounded-lg px-3 py-3 space-y-3">
+                    <h3 className="text-sm font-medium text-foreground">
+                      Advanced: coordinates and exact meters
+                    </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="geom-lat">Center latitude</Label>
+                          <input
+                            id="geom-lat"
+                            type="text"
+                            inputMode="decimal"
+                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                            value={geomLat}
+                            onChange={(e) => setGeomLat(e.target.value)}
+                            onBlur={bumpPivotRadiusSliders}
+                            placeholder="e.g. 41.1234"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="geom-lng">Center longitude</Label>
+                          <input
+                            id="geom-lng"
+                            type="text"
+                            inputMode="decimal"
+                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                            value={geomLng}
+                            onChange={(e) => setGeomLng(e.target.value)}
+                            onBlur={bumpPivotRadiusSliders}
+                            placeholder="e.g. -98.5678"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="geom-inner">Inner radius (m)</Label>
+                          <input
+                            id="geom-inner"
+                            type="text"
+                            inputMode="decimal"
+                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                            value={geomInner}
+                            onChange={(e) => {
+                              setGeomInner(e.target.value);
+                              setPivotRadiusControlsEpoch((n) => n + 1);
+                            }}
+                            onBlur={() => clampGeomRadiusFieldsToValid()}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="geom-outer">Outer radius (m)</Label>
+                          <input
+                            id="geom-outer"
+                            type="text"
+                            inputMode="decimal"
+                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                            value={geomOuter}
+                            onChange={(e) => {
+                              setGeomOuter(e.target.value);
+                              setPivotRadiusControlsEpoch((n) => n + 1);
+                            }}
+                            onBlur={() => clampGeomRadiusFieldsToValid()}
+                            placeholder="e.g. 400"
+                          />
+                        </div>
+                      </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <Button
@@ -417,7 +536,7 @@ const ZoneDetailPage = () => {
                     </Button>
                     {!hasValidPivotGeometry(zone) ? (
                       <span className="text-xs text-amber-700 dark:text-amber-300">
-                        Enter valid center and radii to show the ring on the map.
+                        Set center and radii on the map (or under Advanced), then save to show the ring on the dashboard map.
                       </span>
                     ) : null}
                   </div>
