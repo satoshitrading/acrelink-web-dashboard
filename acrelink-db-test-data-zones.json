@@ -1,0 +1,896 @@
+{
+  "firmware": {
+    "gatewayId:351457835318343": {
+      "fw_version": "boron-1.2.0",
+      "gateway_battery_v": 3.91,
+      "last_updated": "2026-02-26T23:30:00Z",
+      "schema_version": 1
+    }
+  },
+  "gateways": {
+    "gatewayId:351457835318343": {
+
+      "nodeId:70A5769E9EF0": {
+        "packetId:501": {
+          "battery_v": 3.98,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -60,
+          "snr": 9.2,
+          "soil_raw": 45,
+          "timestamp": "2026-02-27T06:00:00Z"
+        },
+        "packetId:502": {
+          "battery_v": 3.95,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -62,
+          "snr": 8.8,
+          "soil_raw": 50,
+          "timestamp": "2026-02-28T06:00:00Z"
+        },
+        "packetId:503": {
+          "battery_v": 3.92,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -65,
+          "snr": 8.5,
+          "soil_raw": 55,
+          "timestamp": "2026-03-01T06:00:00Z"
+        },
+        "packetId:504": {
+          "battery_v": 3.88,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -68,
+          "snr": 7.8,
+          "soil_raw": 720,
+          "timestamp": "2026-03-02T06:00:00Z"
+        }
+      },
+
+      "nodeId:F481779E9EF0": {
+        "packetId:505": {
+          "battery_v": 3.95,
+          "nodeId": "F481779E9EF0",
+          "rssi": -85,
+          "snr": 5.5,
+          "soil_raw": 600,
+          "timestamp": "2026-02-27T06:30:00Z"
+        },
+        "packetId:506": {
+          "battery_v": 3.92,
+          "nodeId": "F481779E9EF0",
+          "rssi": -88,
+          "snr": 5.2,
+          "soil_raw": 650,
+          "timestamp": "2026-02-28T06:30:00Z"
+        },
+        "packetId:507": {
+          "battery_v": 3.88,
+          "nodeId": "F481779E9EF0",
+          "rssi": -90,
+          "snr": 4.8,
+          "soil_raw": 680,
+          "timestamp": "2026-03-01T06:30:00Z"
+        },
+        "packetId:508": {
+          "battery_v": 3.82,
+          "nodeId": "F481779E9EF0",
+          "rssi": -95,
+          "snr": 4.2,
+          "soil_raw": 750,
+          "timestamp": "2026-03-02T06:30:00Z"
+        }
+      },
+
+      "nodeId:A1B2C3D4E5F6": {
+        "packetId:509": {
+          "battery_v": 4.02,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -50,
+          "snr": 11.2,
+          "soil_raw": 1150,
+          "timestamp": "2026-02-27T07:00:00Z"
+        },
+        "packetId:510": {
+          "battery_v": 3.99,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -52,
+          "snr": 10.8,
+          "soil_raw": 1175,
+          "timestamp": "2026-02-28T07:00:00Z"
+        },
+        "packetId:511": {
+          "battery_v": 3.97,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -55,
+          "snr": 10.2,
+          "soil_raw": 1215,
+          "timestamp": "2026-03-01T07:00:00Z"
+        },
+        "packetId:512": {
+          "battery_v": 3.95,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -58,
+          "snr": 9.5,
+          "soil_raw": 800,
+          "timestamp": "2026-03-02T07:00:00Z"
+        }
+      },
+
+      "nodeId:998877665544": {
+        "packetId:513": {
+          "battery_v": 3.75,
+          "nodeId": "998877665544",
+          "rssi": -95,
+          "snr": 3.2,
+          "soil_raw": 1700,
+          "timestamp": "2026-02-27T07:00:00Z"
+        },
+        "packetId:514": {
+          "battery_v": 3.70,
+          "nodeId": "998877665544",
+          "rssi": -98,
+          "snr": 2.8,
+          "soil_raw": 1800,
+          "timestamp": "2026-02-24T08:00:00Z"
+        },
+        "packetId:515": {
+          "battery_v": 3.65,
+          "nodeId": "998877665544",
+          "rssi": -102,
+          "snr": 2.2,
+          "soil_raw": 1950,
+          "timestamp": "2026-02-25T08:00:00Z"
+        },
+        "packetId:516": {
+          "battery_v": 3.58,
+          "nodeId": "998877665544",
+          "rssi": -110,
+          "snr": 1.0,
+          "soil_raw": 850,
+          "timestamp": "2026-02-26T08:00:00Z"
+        }
+      }
+
+    },
+     "gatewayId:351457835318349": {
+
+      "nodeId:70A5769E9EF0": {
+        "packetId:601": {
+          "battery_v": 3.98,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -60,
+          "snr": 9.2,
+          "soil_raw": 40,
+          "timestamp": "2026-02-27T06:00:00Z"
+        },
+        "packetId:602": {
+          "battery_v": 3.95,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -62,
+          "snr": 8.8,
+          "soil_raw": 48,
+          "timestamp": "2026-02-28T06:00:00Z"
+        },
+        "packetId:603": {
+          "battery_v": 3.92,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -64,
+          "snr": 8.6,
+          "soil_raw": 55,
+          "timestamp": "2026-03-01T06:00:00Z"
+        },
+        "packetId:604": {
+          "battery_v": 3.88,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -68,
+          "snr": 8.0,
+          "soil_raw": 1300,
+          "timestamp": "2026-03-02T06:00:00Z"
+        }
+      },
+
+      "nodeId:F481779E9EF0": {
+        "packetId:605": {
+          "battery_v": 3.96,
+          "nodeId": "F481779E9EF0",
+          "rssi": -85,
+          "snr": 5.4,
+          "soil_raw": 680,
+          "timestamp": "2026-02-27T06:30:00Z"
+        },
+        "packetId:606": {
+          "battery_v": 3.93,
+          "nodeId": "F481779E9EF0",
+          "rssi": -87,
+          "snr": 5.3,
+          "soil_raw": 700,
+          "timestamp": "2026-02-28T06:30:00Z"
+        },
+        "packetId:607": {
+          "battery_v": 3.89,
+          "nodeId": "F481779E9EF0",
+          "rssi": -88,
+          "snr": 5.0,
+          "soil_raw": 710,
+          "timestamp": "2026-03-01T06:30:00Z"
+        },
+        "packetId:608": {
+          "battery_v": 3.81,
+          "nodeId": "F481779E9EF0",
+          "rssi": -92,
+          "snr": 4.5,
+          "soil_raw": 1350,
+          "timestamp": "2026-03-02T06:30:00Z"
+        }
+      },
+
+      "nodeId:A1B2C3D4E5F6": {
+        "packetId:609": {
+          "battery_v": 4.02,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -50,
+          "snr": 11.2,
+          "soil_raw": 1160,
+          "timestamp": "2026-02-27T07:00:00Z"
+        },
+        "packetId:610": {
+          "battery_v": 3.99,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -52,
+          "snr": 10.8,
+          "soil_raw": 1180,
+          "timestamp": "2026-02-28T07:00:00Z"
+        },
+        "packetId:611": {
+          "battery_v": 3.97,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -54,
+          "snr": 10.4,
+          "soil_raw": 1270,
+          "timestamp": "2026-03-01T07:00:00Z"
+        },
+        "packetId:612": {
+          "battery_v": 3.95,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -57,
+          "snr": 9.8,
+          "soil_raw": 1400,
+          "timestamp": "2026-03-02T07:00:00Z"
+        }
+      },
+
+      "nodeId:998877665544": {
+        "packetId:613": {
+          "battery_v": 3.76,
+          "nodeId": "998877665544",
+          "rssi": -93,
+          "snr": 3.4,
+          "soil_raw": 1750,
+          "timestamp": "2026-02-27T07:00:00Z"
+        },
+        "packetId:614": {
+          "battery_v": 3.71,
+          "nodeId": "998877665544",
+          "rssi": -96,
+          "snr": 3.0,
+          "soil_raw": 1850,
+          "timestamp": "2026-02-24T08:00:00Z"
+        },
+        "packetId:615": {
+          "battery_v": 3.66,
+          "nodeId": "998877665544",
+          "rssi": -100,
+          "snr": 2.6,
+          "soil_raw": 1980,
+          "timestamp": "2026-02-25T08:00:00Z"
+        },
+        "packetId:616": {
+          "battery_v": 3.57,
+          "nodeId": "998877665544",
+          "rssi": -108,
+          "snr": 1.2,
+          "soil_raw": 1350,
+          "timestamp": "2026-02-26T08:00:00Z"
+        }
+      }
+
+    },
+      "gatewayId:351457835318341": {
+
+      "nodeId:70A5769E9EF0": {
+        "packetId:701": {
+          "battery_v": 3.98,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -60,
+          "snr": 9.0,
+          "soil_raw": 42,
+          "timestamp": "2026-02-27T06:00:00Z"
+        },
+        "packetId:702": {
+          "battery_v": 3.95,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -63,
+          "snr": 8.7,
+          "soil_raw": 52,
+          "timestamp": "2026-02-28T06:00:00Z"
+        },
+        "packetId:703": {
+          "battery_v": 3.91,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -66,
+          "snr": 8.2,
+          "soil_raw": 58,
+          "timestamp": "2026-03-01T06:00:00Z"
+        },
+        "packetId:704": {
+          "battery_v": 3.87,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -70,
+          "snr": 7.5,
+          "soil_raw": 1850,
+          "timestamp": "2026-03-02T06:00:00Z"
+        }
+      },
+
+      "nodeId:F481779E9EF0": {
+        "packetId:705": {
+          "battery_v": 3.94,
+          "nodeId": "F481779E9EF0",
+          "rssi": -88,
+          "snr": 5.1,
+          "soil_raw": 620,
+          "timestamp": "2026-02-27T06:30:00Z"
+        },
+        "packetId:706": {
+          "battery_v": 3.92,
+          "nodeId": "F481779E9EF0",
+          "rssi": -90,
+          "snr": 4.9,
+          "soil_raw": 670,
+          "timestamp": "2026-02-28T06:30:00Z"
+        },
+        "packetId:707": {
+          "battery_v": 3.87,
+          "nodeId": "F481779E9EF0",
+          "rssi": -92,
+          "snr": 4.5,
+          "soil_raw": 695,
+          "timestamp": "2026-03-01T06:30:00Z"
+        },
+        "packetId:708": {
+          "battery_v": 3.80,
+          "nodeId": "F481779E9EF0",
+          "rssi": -98,
+          "snr": 3.8,
+          "soil_raw": 1900,
+          "timestamp": "2026-03-02T06:30:00Z"
+        }
+      },
+
+      "nodeId:A1B2C3D4E5F6": {
+        "packetId:709": {
+          "battery_v": 4.01,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -51,
+          "snr": 11.0,
+          "soil_raw": 1170,
+          "timestamp": "2026-02-27T07:00:00Z"
+        },
+        "packetId:710": {
+          "battery_v": 3.98,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -53,
+          "snr": 10.5,
+          "soil_raw": 1200,
+          "timestamp": "2026-02-28T07:00:00Z"
+        },
+        "packetId:711": {
+          "battery_v": 3.96,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -56,
+          "snr": 9.9,
+          "soil_raw": 1280,
+          "timestamp": "2026-03-01T07:00:00Z"
+        },
+        "packetId:712": {
+          "battery_v": 3.94,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -59,
+          "snr": 9.2,
+          "soil_raw": 2000,
+          "timestamp": "2026-03-02T07:00:00Z"
+        }
+      },
+
+      "nodeId:998877665544": {
+        "packetId:713": {
+          "battery_v": 3.74,
+          "nodeId": "998877665544",
+          "rssi": -96,
+          "snr": 3.0,
+          "soil_raw": 1720,
+          "timestamp": "2026-02-27T08:00:00Z"
+        },
+        "packetId:714": {
+          "battery_v": 3.69,
+          "nodeId": "998877665544",
+          "rssi": -99,
+          "snr": 2.7,
+          "soil_raw": 1820,
+          "timestamp": "2026-02-28T08:00:00Z"
+        },
+        "packetId:715": {
+          "battery_v": 3.64,
+          "nodeId": "998877665544",
+          "rssi": -104,
+          "snr": 2.1,
+          "soil_raw": 1960,
+          "timestamp": "2026-03-01T08:00:00Z"
+        },
+        "packetId:716": {
+          "battery_v": 3.56,
+          "nodeId": "998877665544",
+          "rssi": -112,
+          "snr": 0.8,
+          "soil_raw": 1950,
+          "timestamp": "2026-03-02T08:00:00Z"
+        }
+      }
+
+    },
+      "gatewayId:3514578353183493": {
+
+      "nodeId:70A5769E9EF0": {
+        "packetId:801": {
+          "battery_v": 3.99,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -58,
+          "snr": 9.4,
+          "soil_raw": 47,
+          "timestamp": "2026-02-27T06:00:00Z"
+        },
+        "packetId:802": {
+          "battery_v": 3.96,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -61,
+          "snr": 9.0,
+          "soil_raw": 53,
+          "timestamp": "2026-02-28T06:00:00Z"
+        },
+        "packetId:803": {
+          "battery_v": 3.93,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -63,
+          "snr": 8.7,
+          "soil_raw": 58,
+          "timestamp": "2026-03-01T06:00:00Z"
+        },
+        "packetId:804": {
+          "battery_v": 3.89,
+          "nodeId": "70A5769E9EF0",
+          "rssi": -66,
+          "snr": 8.1,
+          "soil_raw": 2300,
+          "timestamp": "2026-03-02T06:00:00Z"
+        }
+      },
+
+      "nodeId:F481779E9EF0": {
+        "packetId:805": {
+          "battery_v": 3.96,
+          "nodeId": "F481779E9EF0",
+          "rssi": -86,
+          "snr": 5.6,
+          "soil_raw": 640,
+          "timestamp": "2026-02-27T06:30:00Z"
+        },
+        "packetId:806": {
+          "battery_v": 3.93,
+          "nodeId": "F481779E9EF0",
+          "rssi": -89,
+          "snr": 5.2,
+          "soil_raw": 675,
+          "timestamp": "2026-02-28T06:30:00Z"
+        },
+        "packetId:807": {
+          "battery_v": 3.89,
+          "nodeId": "F481779E9EF0",
+          "rssi": -91,
+          "snr": 4.7,
+          "soil_raw": 700,
+          "timestamp": "2026-03-01T06:30:00Z"
+        },
+        "packetId:808": {
+          "battery_v": 3.83,
+          "nodeId": "F481779E9EF0",
+          "rssi": -93,
+          "snr": 4.1,
+          "soil_raw": 2350,
+          "timestamp": "2026-03-02T06:30:00Z"
+        }
+      },
+
+      "nodeId:A1B2C3D4E5F6": {
+        "packetId:809": {
+          "battery_v": 4.03,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -49,
+          "snr": 11.4,
+          "soil_raw": 1140,
+          "timestamp": "2026-02-27T07:00:00Z"
+        },
+        "packetId:810": {
+          "battery_v": 4.00,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -51,
+          "snr": 11.0,
+          "soil_raw": 1165,
+          "timestamp": "2026-02-28T07:00:00Z"
+        },
+        "packetId:811": {
+          "battery_v": 3.98,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -53,
+          "snr": 10.6,
+          "soil_raw": 1250,
+          "timestamp": "2026-03-01T07:00:00Z"
+        },
+        "packetId:812": {
+          "battery_v": 3.96,
+          "nodeId": "A1B2C3D4E5F6",
+          "rssi": -56,
+          "snr": 10.0,
+          "soil_raw": 2400,
+          "timestamp": "2026-03-02T07:00:00Z"
+        }
+      },
+
+      "nodeId:998877665544": {
+        "packetId:813": {
+          "battery_v": 3.77,
+          "nodeId": "998877665544",
+          "rssi": -91,
+          "snr": 3.6,
+          "soil_raw": 1780,
+          "timestamp": "2026-02-27T07:00:00Z"
+        },
+        "packetId:814": {
+          "battery_v": 3.72,
+          "nodeId": "998877665544",
+          "rssi": -94,
+          "snr": 3.2,
+          "soil_raw": 1880,
+          "timestamp": "2026-02-28T08:00:00Z"
+        },
+        "packetId:815": {
+          "battery_v": 3.67,
+          "nodeId": "998877665544",
+          "rssi": -98,
+          "snr": 2.8,
+          "soil_raw": 2000,
+          "timestamp": "2026-03-01T08:00:00Z"
+        },
+        "packetId:816": {
+          "battery_v": 3.59,
+          "nodeId": "998877665544",
+          "rssi": -106,
+          "snr": 1.4,
+          "soil_raw": 2280,
+          "timestamp": "2026-03-02T08:00:00Z"
+        }
+      }
+
+    },
+    "gatewayId:351457835318352": {
+      "nodeId:WET_NODE_001": {
+        "packetId:901": {
+          "battery_v": 3.92,
+          "nodeId": "WET_NODE_001",
+          "rssi": -68,
+          "snr": 7.8,
+          "soil_raw": 2750,
+          "timestamp": "2026-02-27T18:00:00Z"
+        },
+        "packetId:902": {
+          "battery_v": 3.90,
+          "nodeId": "WET_NODE_001",
+          "rssi": -71,
+          "snr": 7.2,
+          "soil_raw": 2850,
+          "timestamp": "2026-02-28T18:00:00Z"
+        },
+        "packetId:903": {
+          "battery_v": 3.89,
+          "nodeId": "WET_NODE_001",
+          "rssi": -74,
+          "snr": 6.5,
+          "soil_raw": 2920,
+          "timestamp": "2026-03-01T18:00:00Z"
+        },
+        "packetId:904": {
+          "battery_v": 3.85,
+          "nodeId": "WET_NODE_001",
+          "rssi": -78,
+          "snr": 5.8,
+          "soil_raw": 2980,
+          "timestamp": "2026-03-02T18:00:00Z"
+        }
+      },
+      "nodeId:WET_NODE_002": {
+        "packetId:905": {
+          "battery_v": 3.94,
+          "nodeId": "WET_NODE_002",
+          "rssi": -65,
+          "snr": 8.5,
+          "soil_raw": 2850,
+          "timestamp": "2026-02-27T18:00:00Z"
+        },
+        "packetId:906": {
+          "battery_v": 3.92,
+          "nodeId": "WET_NODE_002",
+          "rssi": -68,
+          "snr": 7.8,
+          "soil_raw": 2950,
+          "timestamp": "2026-02-28T18:00:00Z"
+        },
+        "packetId:907": {
+          "battery_v": 3.89,
+          "nodeId": "WET_NODE_002",
+          "rssi": -72,
+          "snr": 7.0,
+          "soil_raw": 3030,
+          "timestamp": "2026-03-01T18:00:00Z"
+        },
+        "packetId:908": {
+          "battery_v": 3.87,
+          "nodeId": "WET_NODE_002",
+          "rssi": -76,
+          "snr": 6.2,
+          "soil_raw": 3100,
+          "timestamp": "2026-03-02T18:00:00Z"
+        }
+      },
+      "nodeId:OPTIMAL_NODE_003": {
+        "packetId:909": {
+          "battery_v": 4.00,
+          "nodeId": "OPTIMAL_NODE_003",
+          "rssi": -50,
+          "snr": 10.8,
+          "soil_raw": 1850,
+          "timestamp": "2026-02-27T18:00:00Z"
+        },
+        "packetId:910": {
+          "battery_v": 3.99,
+          "nodeId": "OPTIMAL_NODE_003",
+          "rssi": -52,
+          "snr": 10.3,
+          "soil_raw": 1890,
+          "timestamp": "2026-02-28T18:00:00Z"
+        },
+        "packetId:911": {
+          "battery_v": 3.97,
+          "nodeId": "OPTIMAL_NODE_003",
+          "rssi": -54,
+          "snr": 9.8,
+          "soil_raw": 1920,
+          "timestamp": "2026-03-01T18:00:00Z"
+        },
+        "packetId:912": {
+          "battery_v": 3.95,
+          "nodeId": "OPTIMAL_NODE_003",
+          "rssi": -58,
+          "snr": 9.2,
+          "soil_raw": 1950,
+          "timestamp": "2026-03-02T18:00:00Z"
+        }
+      }
+    },
+    "gatewayId:351457835318353": {
+      "nodeId:SATURATED_NODE_001": {
+        "packetId:1001": {
+          "battery_v": 3.75,
+          "nodeId": "SATURATED_NODE_001",
+          "rssi": -88,
+          "snr": 3.2,
+          "soil_raw": 3200,
+          "timestamp": "2026-02-27T17:00:00Z"
+        },
+        "packetId:1002": {
+          "battery_v": 3.73,
+          "nodeId": "SATURATED_NODE_001",
+          "rssi": -91,
+          "snr": 2.8,
+          "soil_raw": 3300,
+          "timestamp": "2026-02-28T17:00:00Z"
+        },
+        "packetId:1003": {
+          "battery_v": 3.71,
+          "nodeId": "SATURATED_NODE_001",
+          "rssi": -93,
+          "snr": 2.5,
+          "soil_raw": 3350,
+          "timestamp": "2026-03-01T17:00:00Z"
+        },
+        "packetId:1004": {
+          "battery_v": 3.62,
+          "nodeId": "SATURATED_NODE_001",
+          "rssi": -100,
+          "snr": 1.5,
+          "soil_raw": 3500,
+          "timestamp": "2026-03-02T17:00:00Z"
+        }
+      },
+      "nodeId:SATURATED_NODE_002": {
+        "packetId:1005": {
+          "battery_v": 3.77,
+          "nodeId": "SATURATED_NODE_002",
+          "rssi": -85,
+          "snr": 3.8,
+          "soil_raw": 3400,
+          "timestamp": "2026-02-27T17:00:00Z"
+        },
+        "packetId:1006": {
+          "battery_v": 3.74,
+          "nodeId": "SATURATED_NODE_002",
+          "rssi": -88,
+          "snr": 3.4,
+          "soil_raw": 3500,
+          "timestamp": "2026-02-28T17:00:00Z"
+        },
+        "packetId:1007": {
+          "battery_v": 3.70,
+          "nodeId": "SATURATED_NODE_002",
+          "rssi": -92,
+          "snr": 2.9,
+          "soil_raw": 3600,
+          "timestamp": "2026-03-01T17:00:00Z"
+        },
+        "packetId:1008": {
+          "battery_v": 3.58,
+          "nodeId": "SATURATED_NODE_002",
+          "rssi": -105,
+          "snr": 1.2,
+          "soil_raw": 3700,
+          "timestamp": "2026-03-02T17:00:00Z"
+        }
+      },
+      "nodeId:OPTIMAL_NODE_004": {
+        "packetId:1009": {
+          "battery_v": 4.02,
+          "nodeId": "OPTIMAL_NODE_004",
+          "rssi": -45,
+          "snr": 12.0,
+          "soil_raw": 1750,
+          "timestamp": "2026-02-27T17:00:00Z"
+        },
+        "packetId:1010": {
+          "battery_v": 4.00,
+          "nodeId": "OPTIMAL_NODE_004",
+          "rssi": -48,
+          "snr": 11.5,
+          "soil_raw": 1800,
+          "timestamp": "2026-02-28T17:00:00Z"
+        },
+        "packetId:1011": {
+          "battery_v": 3.99,
+          "nodeId": "OPTIMAL_NODE_004",
+          "rssi": -50,
+          "snr": 11.1,
+          "soil_raw": 1840,
+          "timestamp": "2026-03-01T17:00:00Z"
+        },
+        "packetId:1012": {
+          "battery_v": 3.98,
+          "nodeId": "OPTIMAL_NODE_004",
+          "rssi": -52,
+          "snr": 10.6,
+          "soil_raw": 1875,
+          "timestamp": "2026-03-02T17:00:00Z"
+        }
+      }
+    },
+    "gatewayId:351457835318354": {
+      "nodeId:CRITICAL_DRY_NODE": {
+        "packetId:1101": {
+          "battery_v": 3.96,
+          "nodeId": "CRITICAL_DRY_NODE",
+          "rssi": -60,
+          "snr": 9.0,
+          "soil_raw": 220,
+          "timestamp": "2026-02-27T15:00:00Z"
+        },
+        "packetId:1102": {
+          "battery_v": 3.94,
+          "nodeId": "CRITICAL_DRY_NODE",
+          "rssi": -63,
+          "snr": 8.5,
+          "soil_raw": 245,
+          "timestamp": "2026-02-28T15:00:00Z"
+        },
+        "packetId:1103": {
+          "battery_v": 3.91,
+          "nodeId": "CRITICAL_DRY_NODE",
+          "rssi": -65,
+          "snr": 8.1,
+          "soil_raw": 265,
+          "timestamp": "2026-03-01T15:00:00Z"
+        },
+        "packetId:1104": {
+          "battery_v": 3.88,
+          "nodeId": "CRITICAL_DRY_NODE",
+          "rssi": -68,
+          "snr": 7.6,
+          "soil_raw": 280,
+          "timestamp": "2026-03-02T15:00:00Z"
+        }
+      },
+      "nodeId:DRY_NODE": {
+        "packetId:1105": {
+          "battery_v": 3.98,
+          "nodeId": "DRY_NODE",
+          "rssi": -58,
+          "snr": 9.4,
+          "soil_raw": 850,
+          "timestamp": "2026-02-27T15:00:00Z"
+        },
+        "packetId:1106": {
+          "battery_v": 3.96,
+          "nodeId": "DRY_NODE",
+          "rssi": -60,
+          "snr": 9.0,
+          "soil_raw": 910,
+          "timestamp": "2026-02-28T15:00:00Z"
+        },
+        "packetId:1107": {
+          "battery_v": 3.93,
+          "nodeId": "DRY_NODE",
+          "rssi": -63,
+          "snr": 8.6,
+          "soil_raw": 960,
+          "timestamp": "2026-03-01T15:00:00Z"
+        },
+        "packetId:1108": {
+          "battery_v": 3.90,
+          "nodeId": "DRY_NODE",
+          "rssi": -65,
+          "snr": 8.2,
+          "soil_raw": 1000,
+          "timestamp": "2026-03-02T15:00:00Z"
+        }
+      },
+      "nodeId:WET_NODE_003": {
+        "packetId:1109": {
+          "battery_v": 3.90,
+          "nodeId": "WET_NODE_003",
+          "rssi": -75,
+          "snr": 6.0,
+          "soil_raw": 2750,
+          "timestamp": "2026-02-27T15:00:00Z"
+        },
+        "packetId:1110": {
+          "battery_v": 3.88,
+          "nodeId": "WET_NODE_003",
+          "rssi": -78,
+          "snr": 5.4,
+          "soil_raw": 2820,
+          "timestamp": "2026-02-28T15:00:00Z"
+        },
+        "packetId:1111": {
+          "battery_v": 3.85,
+          "nodeId": "WET_NODE_003",
+          "rssi": -82,
+          "snr": 4.8,
+          "soil_raw": 2880,
+          "timestamp": "2026-03-01T15:00:00Z"
+        },
+        "packetId:1112": {
+          "battery_v": 3.82,
+          "nodeId": "WET_NODE_003",
+          "rssi": -85,
+          "snr": 4.2,
+          "soil_raw": 2920,
+          "timestamp": "2026-03-02T15:00:00Z"
+        }
+      }
+    }
+  }
+}

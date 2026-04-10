@@ -1,0 +1,9 @@
+{
+  "version": "11.10.0",
+  "firestore": null,
+  "database": {
+    "version": "1",
+    "path": "database_export",
+    "databaseURL": "https://acrelink-db-default-rtdb.firebaseio.com"
+  }
+}

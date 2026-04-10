@@ -1,14 +1,11 @@
 {
   "rules": {
+
     "users": {
       ".read": true,
-      ".indexOn": [
-        "siteId"
-      ],
-      "$uid": {
-        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
-      }
+      ".write": "auth != null"
     },
+
     "sensor-readings": {
       ".read": true,
       "$siteId": {
@@ -22,10 +19,14 @@
         }
       }
     },
+
     "serviceData": {
       "sites": {
         ".read": "auth != null",
-        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'technician')"
+        ".write": "auth != null && (
+          root.child('users').child(auth.uid).child('role').val() === 'admin' ||
+          root.child('users').child(auth.uid).child('role').val() === 'technician'
+        )"
       },
       "sensors": {
         ".read": "auth != null",
@@ -34,23 +35,26 @@
         }
       },
       "serviceEvents": {
-        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'technician')",
+        ".read": "auth != null && (
+          root.child('users').child(auth.uid).child('role').val() === 'admin' ||
+          root.child('users').child(auth.uid).child('role').val() === 'technician'
+        )",
         "$eventId": {
-          ".write": "auth != null && !data.exists() && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'technician')"
+          ".write": "auth != null && !data.exists() && (
+            root.child('users').child(auth.uid).child('role').val() === 'admin' ||
+            root.child('users').child(auth.uid).child('role').val() === 'technician'
+          )"
         }
       },
-      "zones": {
+    	"zones": {
         ".read": "auth != null",
         ".write": "auth != null",
         "$zoneId": {
           ".read": "auth != null",
           ".write": "auth != null"
         }
-      },
-      "smsRateLimit": {
-        ".read": false,
-        ".write": false
       }
     }
+
   }
 }
