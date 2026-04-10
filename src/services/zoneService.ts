@@ -231,6 +231,7 @@ export async function createZone(input: CreateZoneInput): Promise<string> {
   return zoneId;
 }
 
+/** Persists zone fields. When `name` is updated, auto-syncs `serviceData/sensors` display names for assigned nodes (`{name} - n`), skipping `nameManual` sensors. */
 export async function updateZone(
   zoneId: string,
   updates: UpdateZoneInput
@@ -277,6 +278,19 @@ export async function updateZone(
   }
 
   await update(zoneRef, payload);
+
+  if (updates.name !== undefined) {
+    const snap = await get(zoneRef);
+    if (!snap.exists()) return;
+    const val = snap.val() as Record<string, unknown>;
+    const siteId = String(val.siteId ?? "").trim();
+    if (!siteId) return;
+    const zoneName = String(val.name ?? "");
+    const nodeIds = normalizeNodeIds(
+      Array.isArray(val.nodeIds) ? (val.nodeIds as string[]) : undefined
+    );
+    await syncSensorDisplayNamesAfterZoneAssign(nodeIds, siteId, zoneName);
+  }
 }
 
 export async function deleteZone(zoneId: string): Promise<void> {
