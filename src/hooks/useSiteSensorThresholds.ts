@@ -2,43 +2,53 @@ import { useEffect, useState } from "react";
 import { database } from "@/lib/firebase";
 import { ref, onValue } from "firebase/database";
 
+function parseThreshold(
+  v: unknown
+): number | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 /**
- * All per-node moistureThresholdVwc values for sensors on this site (live).
+ * Per-node warning (`moistureThresholdVwc`) and optional critical (`moistureCriticalVwc`) VWC %.
  */
-export function useSiteSensorThresholds(
-  siteId: string | null
-): Record<string, number | null | undefined> {
-  const [map, setMap] = useState<Record<string, number | null | undefined>>({});
+export function useSiteSensorThresholds(siteId: string | null): {
+  warn: Record<string, number | null | undefined>;
+  crit: Record<string, number | null | undefined>;
+} {
+  const [warn, setWarn] = useState<Record<string, number | null | undefined>>({});
+  const [crit, setCrit] = useState<Record<string, number | null | undefined>>({});
 
   useEffect(() => {
     if (!siteId?.trim()) {
-      setMap({});
+      setWarn({});
+      setCrit({});
       return;
     }
 
     const sensorsRef = ref(database, "serviceData/sensors");
     const unsub = onValue(sensorsRef, (snap) => {
       if (!snap.exists()) {
-        setMap({});
+        setWarn({});
+        setCrit({});
         return;
       }
       const raw = snap.val() as Record<string, Record<string, unknown>>;
-      const next: Record<string, number | null | undefined> = {};
+      const nextW: Record<string, number | null | undefined> = {};
+      const nextC: Record<string, number | null | undefined> = {};
       for (const [nodeId, row] of Object.entries(raw)) {
         if (!row || row.siteId !== siteId) continue;
-        const v = row.moistureThresholdVwc;
-        if (v === undefined) next[nodeId] = undefined;
-        else if (v === null) next[nodeId] = null;
-        else {
-          const n = Number(v);
-          next[nodeId] = Number.isFinite(n) ? n : undefined;
-        }
+        nextW[nodeId] = parseThreshold(row.moistureThresholdVwc);
+        nextC[nodeId] = parseThreshold(row.moistureCriticalVwc);
       }
-      setMap(next);
+      setWarn(nextW);
+      setCrit(nextC);
     });
 
     return () => unsub();
   }, [siteId]);
 
-  return map;
+  return { warn, crit };
 }

@@ -13,6 +13,8 @@ export interface Zone {
   updatedAt: string;
   /** Alert when zone average moisture (VWC %) drops below this value. */
   moistureThresholdVwc?: number | null;
+  /** Optional critical dry threshold (VWC %); must be <= warn when both set. */
+  moistureCriticalVwc?: number | null;
   /**
    * When true, the map draws a pivot annulus (ring) from center + radii instead of a convex hull of nodes.
    */

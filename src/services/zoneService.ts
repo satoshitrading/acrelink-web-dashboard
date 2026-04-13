@@ -91,6 +91,7 @@ export type UpdateZoneInput = Partial<
     | "color"
     | "nodeIds"
     | "moistureThresholdVwc"
+    | "moistureCriticalVwc"
     | "isCenterPivot"
     | "centerLat"
     | "centerLng"
@@ -178,6 +179,9 @@ export function subscribeToSiteZones(
         const moistureThresholdVwc = parseOptionalThreshold(
           val.moistureThresholdVwc
         );
+        const moistureCriticalVwc = parseOptionalThreshold(
+          val.moistureCriticalVwc
+        );
         const pivot = parseOptionalPivot(val);
         list.push({
           id,
@@ -193,6 +197,9 @@ export function subscribeToSiteZones(
           updatedAt: String(val.updatedAt ?? new Date().toISOString()),
           ...(moistureThresholdVwc !== undefined
             ? { moistureThresholdVwc }
+            : {}),
+          ...(moistureCriticalVwc !== undefined
+            ? { moistureCriticalVwc }
             : {}),
           ...pivot,
         });
@@ -249,6 +256,10 @@ export async function updateZone(
   if (updates.moistureThresholdVwc !== undefined) {
     const v = updates.moistureThresholdVwc;
     payload.moistureThresholdVwc = v === null || v === undefined ? null : v;
+  }
+  if (updates.moistureCriticalVwc !== undefined) {
+    const v = updates.moistureCriticalVwc;
+    payload.moistureCriticalVwc = v === null || v === undefined ? null : v;
   }
   if (updates.isCenterPivot !== undefined) {
     payload.isCenterPivot = updates.isCenterPivot;

@@ -39,6 +39,7 @@ import { useForecastEtDaily } from "@/hooks/useForecastEtDaily";
 import { labelForDepthIndex } from "@/lib/depth-label-utils";
 import { useToast } from "@/hooks/use-toast";
 import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
+import { buildDryingForecastChart } from "@/lib/build-drying-forecast-chart";
 
 export type DashboardTabValue = "overview" | "analytics" | "reports";
 
@@ -127,7 +128,7 @@ export function useDashboardController() {
   } = useZones(userSiteId);
 
   const sensorDisplayNames = useSensorDisplayNames(userSiteId);
-  const sensorMoistureThresholds = useSiteSensorThresholds(userSiteId);
+  const { warn: sensorMoistureWarnByNode, crit: sensorMoistureCritByNode } = useSiteSensorThresholds(userSiteId);
   const depthLabelsByNode = useDepthLabelsByNode(userSiteId);
   const { gpsByNodeId } = useSiteSensorsGps(userSiteId);
   const { toast } = useToast();
@@ -439,11 +440,33 @@ export function useDashboardController() {
       allNodeReadings
     );
   }, [zoneFilter, zones, dailyHistoryMergedDepth, allNodeReadings]);
+  const forecastSeriesKeys = useMemo(() => {
+    if (zoneFilter === "all" || zoneFilter === "unassigned") {
+      return moistureChartSeriesKeys;
+    }
+    return depthChartSeriesKeys;
+  }, [zoneFilter, moistureChartSeriesKeys, depthChartSeriesKeys]);
+
+  const forecastSeriesHistory = useMemo(() => {
+    if (zoneFilter === "all" || zoneFilter === "unassigned") {
+      return moistureChartHistory;
+    }
+    return depthChartHistory;
+  }, [zoneFilter, moistureChartHistory, depthChartHistory]);
+
 
   const chartHistory =
-    chartView === "depth" ? depthChartHistory : moistureChartHistory;
+    chartView === "depth"
+      ? depthChartHistory
+      : chartView === "forecast"
+        ? forecastSeriesHistory
+        : moistureChartHistory;
   const chartSeriesKeys =
-    chartView === "depth" ? depthChartSeriesKeys : moistureChartSeriesKeys;
+    chartView === "depth"
+      ? depthChartSeriesKeys
+      : chartView === "forecast"
+        ? forecastSeriesKeys
+        : moistureChartSeriesKeys;
 
   const filteredNodeIds = useMemo(
     () =>
@@ -868,113 +891,35 @@ export function useDashboardController() {
     return chartData.slice(2, 4);
   }, [chartData]);
 
-  const dryingForecastData = useMemo(() => {
-    const now = new Date();
-    const today = getDateKey(now);
-    const yesterday = getDateKey(
-      new Date(now.getTime() - 24 * 60 * 60 * 1000)
-    );
-    const twoDaysAgo = getDateKey(
-      new Date(now.getTime() - 48 * 60 * 60 * 1000)
-    );
-
-    const forecastData: Record<string, unknown>[] = [];
-
-    const todayData: Record<string, unknown> = {
-      day: now.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      }),
-    };
-
-    const getCurrentMoisture = (key: string): number => {
-      if (key === ZONE_AVERAGE_DATA_KEY) {
-        return (
-          zoneSummaries.find((z) => z.id === zoneFilter)?.avgMoisture ?? 0
-        );
-      }
-      if (zoneFilter === "all") {
-        return zoneSummaries.find((z) => z.id === key)?.avgMoisture ?? 0;
-      }
-      return allNodeReadings[key]?.moisture ?? 0;
-    };
-
-    moistureChartSeriesKeys.forEach((key) => {
-      todayData[key] = getCurrentMoisture(key);
+  const dryingForecastBundle = useMemo(() => {
+    return buildDryingForecastChart({
+      now: new Date(),
+      zoneFilter,
+      zones,
+      zoneSummaries,
+      allNodeReadings,
+      seriesKeys: forecastSeriesKeys,
+      historyByDate: forecastSeriesHistory,
+      etByIsoDate: forecastEt.byIsoDate,
+      sensorWarnByNode: sensorMoistureWarnByNode,
+      sensorCritByNode: sensorMoistureCritByNode,
     });
-    todayData.et0 =
-      forecastEt.byIsoDate[today] != null
-        ? forecastEt.byIsoDate[today]
-        : null;
-    forecastData.push(todayData);
-
-    const dryingRates: Record<string, number> = {};
-    moistureChartSeriesKeys.forEach((key) => {
-      const todayMoisture =
-        moistureChartHistory[today]?.[key] ?? getCurrentMoisture(key);
-      const yesterdayMoisture =
-        moistureChartHistory[yesterday]?.[key] ?? null;
-      const twoDaysAgoMoisture =
-        moistureChartHistory[twoDaysAgo]?.[key] ?? null;
-
-      const rates: number[] = [];
-      if (
-        yesterdayMoisture != null &&
-        todayMoisture != null
-      ) {
-        rates.push(yesterdayMoisture - todayMoisture);
-      }
-      if (
-        twoDaysAgoMoisture != null &&
-        yesterdayMoisture != null
-      ) {
-        rates.push(twoDaysAgoMoisture - yesterdayMoisture);
-      }
-
-      dryingRates[key] =
-        rates.length > 0
-          ? Math.max(1, rates.reduce((a, b) => a + b) / rates.length)
-          : 1.5;
-    });
-
-    for (let i = 1; i <= 6; i++) {
-      const futureDate = new Date(now);
-      futureDate.setDate(now.getDate() + i);
-      const dayLabel = futureDate.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-      const futureKey = getDateKey(futureDate);
-
-      const dayData: Record<string, unknown> = { day: dayLabel };
-      dayData.et0 =
-        forecastEt.byIsoDate[futureKey] != null
-          ? forecastEt.byIsoDate[futureKey]
-          : null;
-
-      moistureChartSeriesKeys.forEach((key) => {
-        const currentMoisture =
-          moistureChartHistory[today]?.[key] ?? getCurrentMoisture(key);
-        const forecastedMoisture = Math.max(
-          0,
-          currentMoisture - dryingRates[key] * i
-        );
-        dayData[key] = Math.round(forecastedMoisture * 10) / 10;
-      });
-
-      forecastData.push(dayData);
-    }
-
-    return forecastData;
   }, [
-    moistureChartHistory,
-    moistureChartSeriesKeys,
     zoneFilter,
+    zones,
     zoneSummaries,
     allNodeReadings,
+    forecastSeriesKeys,
+    forecastSeriesHistory,
     forecastEt.byIsoDate,
+    sensorMoistureWarnByNode,
+    sensorMoistureCritByNode,
   ]);
+
+  const dryingForecastData = dryingForecastBundle.rows;
+  const forecastMoistureWarnVwc = dryingForecastBundle.forecastWarnVwc;
+  const forecastMoistureCritVwc = dryingForecastBundle.forecastCritVwc;
+  const projectedIrrigationLabel = dryingForecastBundle.projectedIrrigationLabel;
 
   const dynamicAlerts = useMemo(() => {
     const now = new Date();
@@ -1094,7 +1039,7 @@ export function useDashboardController() {
       if (z.avgMoisture < th) active.add(`zone:${z.id}`);
     }
     for (const [nid, r] of Object.entries(allNodeReadings)) {
-      const th = sensorMoistureThresholds[nid];
+      const th = sensorMoistureWarnByNode[nid];
       if (th == null || Number.isNaN(Number(th))) continue;
       if (r.online && r.moisture < th) active.add(`node:${nid}`);
     }
@@ -1126,7 +1071,7 @@ export function useDashboardController() {
     userSiteId,
     zoneSummaries,
     allNodeReadings,
-    sensorMoistureThresholds,
+    sensorMoistureWarnByNode,
     sensorDisplayNames,
   ]);
   /* eslint-enable react-hooks/exhaustive-deps */
@@ -1134,10 +1079,12 @@ export function useDashboardController() {
   const getSeriesChartColor = (key: string, idx: number) => {
     const parsed = parseSeriesKey(key);
     const colorKey =
-      parsed && chartView === "depth" ? parsed.entityId : key;
+      parsed && (chartView === "depth" || chartView === "forecast")
+        ? parsed.entityId
+        : key;
 
     if (colorKey === ZONE_AVERAGE_DATA_KEY) {
-      if (chartView === "depth") {
+      if (chartView === "depth" || chartView === "forecast") {
         return DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length];
       }
       const zs = zoneSummaries.find((z) => z.id === zoneFilter);
@@ -1176,7 +1123,7 @@ export function useDashboardController() {
 
   const getSeriesChartName = (key: string) => {
     const parsed = parseSeriesKey(key);
-    if (parsed && chartView === "depth") {
+    if (parsed && (chartView === "depth" || chartView === "forecast")) {
       const depthLabel = (() => {
         if (parsed.entityId === ZONE_AVERAGE_DATA_KEY) {
           const zSel = zones.find((zo) => zo.id === zoneFilter);
@@ -1350,6 +1297,9 @@ export function useDashboardController() {
     chartData,
     trend24HrData,
     dryingForecastData,
+    forecastMoistureWarnVwc,
+    forecastMoistureCritVwc,
+    projectedIrrigationLabel,
     forecastChartHasEt,
     forecastGpsAvailable,
     forecastEtLoading: forecastEt.loading,

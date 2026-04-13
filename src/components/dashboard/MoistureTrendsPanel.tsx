@@ -11,6 +11,7 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceArea,
+  ReferenceLine,
   ComposedChart,
   Bar,
 } from "recharts";
@@ -45,6 +46,9 @@ export function MoistureTrendsPanel() {
     forecastGpsAvailable,
     forecastEtLoading,
     forecastEtError,
+    forecastMoistureWarnVwc,
+    forecastMoistureCritVwc,
+    projectedIrrigationLabel,
     chartSeriesKeys,
     enabledSeries,
     handleToggleSeries,
@@ -71,7 +75,7 @@ export function MoistureTrendsPanel() {
   const subtitle =
     chartView === "forecast"
       ? forecastChartHasEt
-        ? "Projected soil moisture (dashed) with reference ET₀ from Open-Meteo (bars, mm/day)."
+        ? "ET₀-driven projected VWC (dashed) from current readings; ET₀ from Open-Meteo (bars, mm/day)."
         : forecastGpsAvailable
           ? forecastEtLoading
             ? "Loading ET₀ overlay…"
@@ -504,6 +508,34 @@ export function MoistureTrendsPanel() {
                 )}
                 <Tooltip content={<ChartTooltip />} />
                 <Legend />
+                {forecastMoistureWarnVwc != null && (
+                  <ReferenceLine
+                    yAxisId="left"
+                    y={forecastMoistureWarnVwc}
+                    stroke="hsl(var(--chart-4))"
+                    strokeDasharray="6 4"
+                    label={{
+                      value: `Warning ${forecastMoistureWarnVwc}%`,
+                      position: "insideTopRight",
+                      fill: "hsl(var(--muted-foreground))",
+                      fontSize: 11,
+                    }}
+                  />
+                )}
+                {forecastMoistureCritVwc != null && (
+                  <ReferenceLine
+                    yAxisId="left"
+                    y={forecastMoistureCritVwc}
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="6 4"
+                    label={{
+                      value: `Critical ${forecastMoistureCritVwc}%`,
+                      position: "insideBottomRight",
+                      fill: "hsl(var(--muted-foreground))",
+                      fontSize: 11,
+                    }}
+                  />
+                )}
                 {chartSeriesKeys.map((key, idx) => {
                   const color = getSeriesChartColor(key, idx);
                   return (
@@ -535,6 +567,9 @@ export function MoistureTrendsPanel() {
                 )}
               </ComposedChart>
             </ResponsiveContainer>
+            <p className="text-center text-sm text-muted-foreground mt-3 px-2">
+              {projectedIrrigationLabel}
+            </p>
             <div className="flex justify-center gap-6 mt-4 mb-2 flex-wrap">
               {chartSeriesKeys.map((key, idx) => {
                 const color = getSeriesChartColor(key, idx);
