@@ -1,4 +1,5 @@
 import { database } from "@/lib/firebase";
+import { sanitizeDepthLabelsForWrite } from "@/lib/depth-label-utils";
 import { DEFAULT_ZONE_COLOR, normalizeZoneColor } from "@/lib/zoneColor";
 import type { Zone } from "@/types/zone";
 import {
@@ -362,6 +363,20 @@ export async function updateSensorMoistureThreshold(
   const now = new Date().toISOString();
   await update(ref(database, `${SENSORS_PATH}/${nodeId}`), {
     moistureThresholdVwc,
+    updatedAt: now,
+  });
+}
+
+/** Set per-node depth labels map used by Depth Breakdown legends. Pass null/empty to clear. */
+export async function updateSensorDepthLabels(
+  nodeId: string,
+  depthLabels: Record<string, string> | null
+): Promise<void> {
+  const now = new Date().toISOString();
+  const sanitized =
+    depthLabels == null ? {} : sanitizeDepthLabelsForWrite(depthLabels);
+  await update(ref(database, `${SENSORS_PATH}/${nodeId}`), {
+    depthLabels: Object.keys(sanitized).length > 0 ? sanitized : null,
     updatedAt: now,
   });
 }

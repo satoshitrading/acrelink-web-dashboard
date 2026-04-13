@@ -17,11 +17,22 @@ export function ChartTooltip({ active, payload, label }: {
         }}
       >
         <p style={{ marginBottom: "8px", fontWeight: 700 }}>{label}</p>
-        {sortedPayload.map((entry, index) => (
-          <p key={index} style={{ color: entry.color, margin: "10px 0", fontSize: "14px" }}>
-            {entry.name}: {entry.value}%
-          </p>
-        ))}
+        {sortedPayload.map((entry, index) => {
+          const isEt =
+            typeof entry.name === "string" &&
+            (entry.name.includes("ET₀") || entry.name.includes("ET"));
+          const valueStr =
+            entry.value == null
+              ? "—"
+              : isEt
+                ? `${entry.value} mm/day`
+                : `${entry.value}%`;
+          return (
+            <p key={index} style={{ color: entry.color, margin: "10px 0", fontSize: "14px" }}>
+              {entry.name}: {valueStr}
+            </p>
+          );
+        })}
       </div>
     );
   }

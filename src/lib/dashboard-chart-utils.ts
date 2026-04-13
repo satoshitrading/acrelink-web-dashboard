@@ -24,6 +24,31 @@ export function mergeDailyHistoryWithToday(
   return out;
 }
 
+/**
+ * Merge historical per-node per-depth daily averages with today's live `moistureByDepth`.
+ */
+export function mergeDailyHistoryByDepthWithToday(
+  dailyHistoryByDepth: Record<string, Record<string, Record<string, number>>>,
+  todayKey: string,
+  liveMoistureByDepthByNode: Record<string, Record<string, number>>
+): Record<string, Record<string, Record<string, number>>> {
+  const out: Record<string, Record<string, Record<string, number>>> = {};
+  for (const [dk, byNode] of Object.entries(dailyHistoryByDepth)) {
+    out[dk] = {};
+    for (const [nid, depths] of Object.entries(byNode)) {
+      out[dk][nid] = { ...depths };
+    }
+  }
+  if (!out[todayKey]) out[todayKey] = {};
+  for (const [nid, byDepth] of Object.entries(liveMoistureByDepthByNode)) {
+    if (!out[todayKey][nid]) out[todayKey][nid] = {};
+    for (const [d, v] of Object.entries(byDepth)) {
+      out[todayKey][nid][d] = v;
+    }
+  }
+  return out;
+}
+
 export function buildChartHistory(
   zoneFilter: ZoneFilterValue,
   zones: Zone[],

@@ -20,9 +20,76 @@ import {
   nodeIdFromZoneFilter,
 } from "@/lib/zone-filter-utils";
 import { getBatteryStatusColor, getSignalStatusColor, getMoistureStatusColors } from "@/lib/sensor-status-utils";
+import { labelForDepthIndex } from "@/lib/depth-label-utils";
+import type { NodeReading } from "@/types/zone";
 import { useDashboard } from "@/contexts/dashboard/DashboardContext";
 
 const MAX_ZONE_CARDS = 8;
+
+/** Mean VWC per depth across online nodes in zone (only depths with at least one value). */
+function zoneAverageMoistureByDepth(
+  nodeIds: string[],
+  readings: Record<string, NodeReading>
+): Record<string, number> | null {
+  const depthAgg: Record<string, { sum: number; n: number }> = {};
+  for (const nid of nodeIds) {
+    const r = readings[nid];
+    if (!r?.online || !r.moistureByDepth) continue;
+    for (const [d, v] of Object.entries(r.moistureByDepth)) {
+      if (v == null || Number.isNaN(Number(v))) continue;
+      if (!depthAgg[d]) depthAgg[d] = { sum: 0, n: 0 };
+      depthAgg[d].sum += v;
+      depthAgg[d].n += 1;
+    }
+  }
+  const keys = Object.keys(depthAgg).filter((d) => depthAgg[d].n > 0);
+  if (keys.length === 0) return null;
+  const out: Record<string, number> = {};
+  for (const d of keys) {
+    const { sum, n } = depthAgg[d];
+    out[d] = Math.round((sum / n) * 10) / 10;
+  }
+  return out;
+}
+
+function zoneLabelForDepth(
+  nodeIds: string[],
+  depthLabelsByNode: Record<string, Record<string, string>>,
+  depthIndex: string
+): string {
+  for (const nid of nodeIds) {
+    const L = labelForDepthIndex(depthLabelsByNode[nid], depthIndex);
+    if (L) return L;
+  }
+  return `Depth ${depthIndex}`;
+}
+
+function MoistureDepthBreakdownList({
+  valuesByDepth,
+  labelForDepth,
+}: {
+  valuesByDepth: Record<string, number>;
+  labelForDepth: (depthIndex: string) => string;
+}) {
+  const keys = Object.keys(valuesByDepth).sort(
+    (a, b) => Number(a) - Number(b)
+  );
+  if (keys.length === 0) return null;
+  return (
+    <ul className="text-xs space-y-1 pt-2 mt-2 border-t border-border/50">
+      {keys.map((d) => (
+        <li key={d} className="flex justify-between gap-2">
+          <span className="text-muted-foreground truncate">
+            {labelForDepth(d)}
+          </span>
+          <span className="font-semibold shrink-0 tabular-nums">
+            {valuesByDepth[d]}%
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function ZoneStatusPanel() {
   const navigate = useNavigate();
@@ -39,6 +106,7 @@ export function ZoneStatusPanel() {
     setAssignTargetZoneId,
     sensorDisplayNames,
     goToZoneTrends,
+    depthLabelsByNode,
   } = useDashboard();
 
   const [zoneGridExpanded, setZoneGridExpanded] = useState(false);
@@ -123,6 +191,15 @@ export function ZoneStatusPanel() {
                             <span>Moisture</span>
                             <span className="font-bold">{r ? `${r.moisture}%` : "—"}</span>
                           </div>
+                          {r?.moistureByDepth && (
+                            <MoistureDepthBreakdownList
+                              valuesByDepth={r.moistureByDepth}
+                              labelForDepth={(d) =>
+                                labelForDepthIndex(depthLabelsByNode[nodeId], d) ??
+                                `Depth ${d}`
+                              }
+                            />
+                          )}
                           <p className={`text-sm font-semibold ${colors.text}`}>{r?.status ?? "—"}</p>
                         </div>
                       </CardContent>
@@ -160,6 +237,13 @@ export function ZoneStatusPanel() {
                           <span>Moisture</span>
                           <span className="font-bold">{r.moisture}%</span>
                         </div>
+                        <MoistureDepthBreakdownList
+                          valuesByDepth={r.moistureByDepth}
+                          labelForDepth={(d) =>
+                            labelForDepthIndex(depthLabelsByNode[nid], d) ??
+                            `Depth ${d}`
+                          }
+                        />
                         <div className="flex justify-between text-sm">
                           <span>Battery</span>
                           <span
@@ -207,6 +291,10 @@ export function ZoneStatusPanel() {
                 ) : (
                   zonesForGrid.map((zone) => {
                     const colors = getMoistureStatusColors(zone.status);
+                    const depthAvgs = zoneAverageMoistureByDepth(
+                      zone.nodeIds,
+                      allNodeReadings
+                    );
                     return (
                       <Card
                         key={zone.id}
@@ -249,6 +337,18 @@ export function ZoneStatusPanel() {
                               </span>
                               <span className={`font-bold`}>{zone.avgMoisture}%</span>
                             </div>
+                            {depthAvgs && (
+                              <MoistureDepthBreakdownList
+                                valuesByDepth={depthAvgs}
+                                labelForDepth={(d) =>
+                                  zoneLabelForDepth(
+                                    zone.nodeIds,
+                                    depthLabelsByNode,
+                                    d
+                                  )
+                                }
+                              />
+                            )}
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-muted-foreground flex items-center">
                                 <Battery className="h-3.5 w-3.5 mr-1.5" /> Battery

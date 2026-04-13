@@ -49,6 +49,8 @@ export type SensorMeta = {
   notes?: string;
   /** Alert when this node's moisture (VWC %) drops below this value. */
   moistureThresholdVwc?: number | null;
+  /** Optional labels per depth index (`"0"`, `"1"`, …), e.g. `"6 inches"`. */
+  depthLabels?: Record<string, string>;
 };
 
 export type SensorTelemetry = {

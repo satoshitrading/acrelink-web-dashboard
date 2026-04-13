@@ -10,17 +10,43 @@ import {
   getMoistureStatus,
   packetReceptionPercentLast7Days,
 } from "@/lib/dataTransform";
+import { parseSoilRawByDepth } from "@/lib/parseSoilRawByDepth";
 import type { NodeReading, Zone, ZoneSummary } from "@/types/zone";
 import { ref, onValue, get, Unsubscribe } from "firebase/database";
 
 export type AggregatedSnapshot = {
   allNodeReadings: Record<string, NodeReading>;
-  /** dateKey (YYYY-MM-DD) -> nodeId -> average moisture % that day */
+  /** dateKey (YYYY-MM-DD) -> nodeId -> average moisture % that day (depth `"0"` / primary mirror) */
   dailyHistoryByNode: Record<string, Record<string, number>>;
+  /** dateKey -> nodeId -> depthKey -> average VWC % that day */
+  dailyHistoryByDepth: Record<string, Record<string, Record<string, number>>>;
   siteLatestDateKey: string | null;
   totalNodeCount: number;
   onlineNodeCount: number;
 };
+
+/** Primary VWC for thresholds: depth `"0"`, else shallowest reported depth. */
+function primaryMoistureFromByDepth(
+  moistureByDepth: Record<string, number>
+): number {
+  if (moistureByDepth["0"] != null) return moistureByDepth["0"];
+  const keys = Object.keys(moistureByDepth).sort(
+    (a, b) => Number(a) - Number(b)
+  );
+  if (keys.length === 0) return 0;
+  return moistureByDepth[keys[0]] ?? 0;
+}
+
+function moistureByDepthFromRawPacket(
+  rawData: Record<string, unknown>
+): Record<string, number> {
+  const rawByDepth = parseSoilRawByDepth(rawData);
+  const out: Record<string, number> = {};
+  for (const [d, raw] of Object.entries(rawByDepth)) {
+    out[d] = getMoisturePercent(raw);
+  }
+  return out;
+}
 
 function parsePacketsFromNode(
   node: Record<string, unknown>
@@ -104,11 +130,17 @@ function buildLatestReadingForNode(
     const dateKey = String(rawData.timestamp).split("T")[0];
     if (dateKey > realToday) continue;
 
-    const soilRaw = Number(rawData.soil_raw);
+    const rd = rawData as Record<string, unknown>;
+    const moistureByDepth = moistureByDepthFromRawPacket(rd);
+    const moisture = primaryMoistureFromByDepth(moistureByDepth);
+    const rawByDepth = parseSoilRawByDepth(rd);
+    const soilRaw =
+      rawByDepth["0"] != null
+        ? rawByDepth["0"]
+        : Number(rd.soil_raw);
     const batteryV = Number(rawData.battery_v);
     const rssi = Number(rawData.rssi);
 
-    const moisture = getMoisturePercent(soilRaw);
     const batteryInfo = getBatteryStatus(batteryV);
     const statusInfo = getMoistureStatus(moisture);
 
@@ -118,6 +150,7 @@ function buildLatestReadingForNode(
       latestPacket = {
         nodeId: bareId,
         gatewayId,
+        moistureByDepth,
         moisture,
         batteryVoltage: batteryV,
         batteryStatus: batteryInfo.status,
@@ -125,7 +158,7 @@ function buildLatestReadingForNode(
         signal,
         status: statusInfo.status,
         timestamp: String(rawData.timestamp),
-        soil_raw: soilRaw,
+        soil_raw: Number.isFinite(soilRaw) ? soilRaw : 0,
         rssi,
         online:
           !!nodeLatestDateKey &&
@@ -139,15 +172,20 @@ function buildLatestReadingForNode(
 }
 
 /**
- * Build per-node daily average moisture from gateways snapshot (same rules as legacy Dashboard).
+ * Build per-node daily average moisture (primary / depth-0 mirror) and per-depth daily averages.
  */
-function buildDailyHistoryByNode(
+function buildDailyHistories(
   gatewaysData: Record<string, unknown>,
-  realToday: string,
-  nodeLatestDateMap: Record<string, Record<string, string | null>>,
-  siteLatestDateKey: string | null
-): Record<string, Record<string, number>> {
-  const historicalDaily: Record<string, Record<string, number[]>> = {};
+  realToday: string
+): {
+  dailyHistoryByNode: Record<string, Record<string, number>>;
+  dailyHistoryByDepth: Record<string, Record<string, Record<string, number>>>;
+} {
+  const historicalPrimary: Record<string, Record<string, number[]>> = {};
+  const historicalDepth: Record<
+    string,
+    Record<string, Record<string, number[]>>
+  > = {};
 
   for (const gatewayId in gatewaysData) {
     if (!gatewayId || gatewayId.trim() === "" || gatewayId.endsWith(":"))
@@ -157,13 +195,6 @@ function buildDailyHistoryByNode(
 
     for (const nodeKey in gateway) {
       if (!nodeKey.startsWith("nodeId:")) continue;
-
-      const nodeLatest = nodeLatestDateMap[gatewayId]?.[nodeKey];
-      const isOnline =
-        !!nodeLatest &&
-        !!siteLatestDateKey &&
-        nodeLatest === siteLatestDateKey;
-      if (!isOnline) continue;
 
       const bareId = nodeKey.replace(/^nodeId:/, "");
       const node = gateway[nodeKey] as Record<string, unknown>;
@@ -175,28 +206,61 @@ function buildDailyHistoryByNode(
         const dateKey = String(rawData.timestamp).split("T")[0];
         if (dateKey > realToday) continue;
 
-        if (!historicalDaily[dateKey]) historicalDaily[dateKey] = {};
-        if (!historicalDaily[dateKey][bareId]) {
-          historicalDaily[dateKey][bareId] = [];
+        const rd = rawData as Record<string, unknown>;
+        const moistureByDepth = moistureByDepthFromRawPacket(rd);
+        const primary = primaryMoistureFromByDepth(moistureByDepth);
+        if (Object.keys(moistureByDepth).length === 0) continue;
+
+        if (!historicalPrimary[dateKey]) historicalPrimary[dateKey] = {};
+        if (!historicalPrimary[dateKey][bareId]) {
+          historicalPrimary[dateKey][bareId] = [];
         }
-        const moisture = getMoisturePercent(Number(rawData.soil_raw));
-        historicalDaily[dateKey][bareId].push(moisture);
+        historicalPrimary[dateKey][bareId].push(primary);
+
+        if (!historicalDepth[dateKey]) historicalDepth[dateKey] = {};
+        if (!historicalDepth[dateKey][bareId]) {
+          historicalDepth[dateKey][bareId] = {};
+        }
+        for (const [depthKey, vwc] of Object.entries(moistureByDepth)) {
+          if (!historicalDepth[dateKey][bareId][depthKey]) {
+            historicalDepth[dateKey][bareId][depthKey] = [];
+          }
+          historicalDepth[dateKey][bareId][depthKey].push(vwc);
+        }
       }
     }
   }
 
-  const dailyAverages: Record<string, Record<string, number>> = {};
-  for (const dateKey in historicalDaily) {
-    dailyAverages[dateKey] = {};
-    for (const nodeId in historicalDaily[dateKey]) {
-      const readings = historicalDaily[dateKey][nodeId];
+  const dailyHistoryByNode: Record<string, Record<string, number>> = {};
+  for (const dateKey in historicalPrimary) {
+    dailyHistoryByNode[dateKey] = {};
+    for (const nodeId in historicalPrimary[dateKey]) {
+      const readings = historicalPrimary[dateKey][nodeId];
       const avg =
         readings.reduce((a, b) => a + b, 0) / Math.max(1, readings.length);
-      dailyAverages[dateKey][nodeId] = Math.round(avg * 10) / 10;
+      dailyHistoryByNode[dateKey][nodeId] = Math.round(avg * 10) / 10;
     }
   }
 
-  return dailyAverages;
+  const dailyHistoryByDepth: Record<
+    string,
+    Record<string, Record<string, number>>
+  > = {};
+  for (const dateKey in historicalDepth) {
+    dailyHistoryByDepth[dateKey] = {};
+    for (const nodeId in historicalDepth[dateKey]) {
+      dailyHistoryByDepth[dateKey][nodeId] = {};
+      for (const depthKey in historicalDepth[dateKey][nodeId]) {
+        const readings = historicalDepth[dateKey][nodeId][depthKey];
+        const avg =
+          readings.reduce((a, b) => a + b, 0) / Math.max(1, readings.length);
+        dailyHistoryByDepth[dateKey][nodeId][depthKey] =
+          Math.round(avg * 10) / 10;
+      }
+    }
+  }
+
+  return { dailyHistoryByNode, dailyHistoryByDepth };
 }
 
 function processGatewaysSnapshot(
@@ -206,6 +270,7 @@ function processGatewaysSnapshot(
   const empty: AggregatedSnapshot = {
     allNodeReadings: {},
     dailyHistoryByNode: {},
+    dailyHistoryByDepth: {},
     siteLatestDateKey: null,
     totalNodeCount: 0,
     onlineNodeCount: 0,
@@ -253,16 +318,15 @@ function processGatewaysSnapshot(
     }
   }
 
-  const dailyHistoryByNode = buildDailyHistoryByNode(
+  const { dailyHistoryByNode, dailyHistoryByDepth } = buildDailyHistories(
     gatewaysData,
-    realToday,
-    nodeLatestDateMap,
-    siteLatestDateKey
+    realToday
   );
 
   return {
     allNodeReadings,
     dailyHistoryByNode,
+    dailyHistoryByDepth,
     siteLatestDateKey,
     totalNodeCount,
     onlineNodeCount,
@@ -288,6 +352,7 @@ export function subscribeToSiteAggregation(
         callback({
           allNodeReadings: {},
           dailyHistoryByNode: {},
+          dailyHistoryByDepth: {},
           siteLatestDateKey: null,
           totalNodeCount: 0,
           onlineNodeCount: 0,
@@ -302,6 +367,7 @@ export function subscribeToSiteAggregation(
       callback({
         allNodeReadings: {},
         dailyHistoryByNode: {},
+        dailyHistoryByDepth: {},
         siteLatestDateKey: null,
         totalNodeCount: 0,
         onlineNodeCount: 0,
@@ -326,6 +392,7 @@ export async function fetchSiteAggregation(
     return {
       allNodeReadings: {},
       dailyHistoryByNode: {},
+      dailyHistoryByDepth: {},
       siteLatestDateKey: null,
       totalNodeCount: 0,
       onlineNodeCount: 0,

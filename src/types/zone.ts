@@ -40,6 +40,8 @@ export interface NodeReading {
   nodeId: string;
   /** Full RTDB key e.g. "gatewayId:351457835318343" */
   gatewayId: string;
+  /** VWC % per depth index (`"0"`, `"1"`, …); depth `"0"` mirrors legacy primary moisture. */
+  moistureByDepth: Record<string, number>;
   moisture: number;
   batteryVoltage: number;
   batteryStatus: string;

@@ -5,6 +5,7 @@ import { subscribeToSiteAggregation } from "@/services/aggregationService";
 const empty: AggregatedSnapshot = {
   allNodeReadings: {},
   dailyHistoryByNode: {},
+  dailyHistoryByDepth: {},
   siteLatestDateKey: null,
   totalNodeCount: 0,
   onlineNodeCount: 0,
@@ -38,6 +39,7 @@ export function useAggregatedData(siteId: string | null) {
   return {
     allNodeReadings: data.allNodeReadings,
     dailyHistoryByNode: data.dailyHistoryByNode,
+    dailyHistoryByDepth: data.dailyHistoryByDepth,
     siteLatestDateKey: data.siteLatestDateKey,
     totalNodeCount: data.totalNodeCount,
     onlineNodeCount: data.onlineNodeCount,

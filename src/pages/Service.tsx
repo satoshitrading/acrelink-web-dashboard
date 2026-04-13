@@ -33,6 +33,7 @@ import { Modal } from "@/components/ui/modal";
 import ReactQuill from "react-quill";
 import { auth } from "@/lib/firebase";
 import { useServiceData, Sensor, SensorStatus } from "@/hooks/useServiceData";
+import { sanitizeDepthLabelsForWrite } from "@/lib/depth-label-utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,20 @@ const rfColorClass = (rf?: string): string => {
   if (rf === "Poor") return "text-red-500";
   return "text-muted-foreground";
 };
+
+const DEPTH_LABEL_ROW_KEY = /^(\d+|soil_raw_\d+)$/;
+
+function nextSoilRawFieldKey(rows: { fieldKey: string }[]): string {
+  let max = -1;
+  for (const r of rows) {
+    const m = r.fieldKey.match(/^soil_raw_(\d+)$/);
+    if (m) max = Math.max(max, Number(m[1]));
+    if (/^\d+$/.test(r.fieldKey)) {
+      max = Math.max(max, Number(r.fieldKey));
+    }
+  }
+  return `soil_raw_${max + 1}`;
+}
 
 const statusBadgeClass = (status?: SensorStatus): string => {
   switch (status) {
@@ -88,6 +103,11 @@ const Service: React.FC = () => {
   const [remarks, setRemarks] = useState("");
   const [selectedSensors, setSelectedSensors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+
+  /** Multi-depth RTDB labels (`soil_raw_0`, …) edited in sensor panel */
+  const [depthLabelRows, setDepthLabelRows] = useState<
+    { fieldKey: string; label: string }[]
+  >([{ fieldKey: "soil_raw_0", label: "" }]);
 
   const [addSiteOpen, setAddSiteOpen] = useState(false);
   const [newSite, setNewSite] = useState({ id: "", name: "", info: "" });
@@ -151,7 +171,26 @@ const Service: React.FC = () => {
     setPanelOpen(false);
     setEditingSensor(null);
     setSensorHistory([]);
+    setDepthLabelRows([{ fieldKey: "soil_raw_0", label: "" }]);
   };
+
+  useEffect(() => {
+    if (!panelOpen || !editingSensor) return;
+    const dl = editingSensor.depthLabels ?? {};
+    const entries = Object.entries(dl).filter(([k]) =>
+      DEPTH_LABEL_ROW_KEY.test(k)
+    );
+    if (entries.length === 0) {
+      setDepthLabelRows([{ fieldKey: "soil_raw_0", label: "" }]);
+    } else {
+      setDepthLabelRows(
+        entries.map(([fieldKey, label]) => ({
+          fieldKey,
+          label: typeof label === "string" ? label : "",
+        }))
+      );
+    }
+  }, [panelOpen, editingSensor?.id]);
 
   // ── Save sensor to Firebase ───────────────────────────────────────────────
   const handleSaveSensor = async (sensor: Sensor) => {
@@ -159,9 +198,24 @@ const Service: React.FC = () => {
     if (!id) return toast.error("Sensor ID cannot be empty");
     if (!sensor.depth) return toast.error("Please select a depth");
 
+    const labelMap: Record<string, string> = {};
+    for (const row of depthLabelRows) {
+      const k = row.fieldKey.trim();
+      const v = row.label.trim();
+      if (!k || !v) continue;
+      labelMap[k] = v;
+    }
+    const depthLabels = sanitizeDepthLabelsForWrite(labelMap);
+
     setSaving(true);
     try {
-      await saveSensor({ ...sensor, siteId: selectedSiteId });
+      const toSave: Sensor = { ...sensor, siteId: selectedSiteId };
+      if (Object.keys(depthLabels).length > 0) {
+        toSave.depthLabels = depthLabels;
+      } else {
+        delete toSave.depthLabels;
+      }
+      await saveSensor(toSave);
       closePanel();
       toast.success(`Saved ${id}`);
     } catch (e: any) {
@@ -659,6 +713,102 @@ const Service: React.FC = () => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Multi-depth packet field labels (serviceData/sensors/.../depthLabels) */}
+                <div>
+                  <Label className="text-sm font-semibold">
+                    Multi-depth labels
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1 mb-2">
+                    Maps human-readable names to packet fields{" "}
+                    <code className="text-[11px] bg-muted px-1 rounded">
+                      soil_raw_0
+                    </code>
+                    ,{" "}
+                    <code className="text-[11px] bg-muted px-1 rounded">
+                      soil_raw_1
+                    </code>
+                    , … Used on the dashboard Depth Breakdown chart. Legacy
+                    single-depth nodes can leave one row or empty values.
+                  </p>
+                  <div className="space-y-2">
+                    {depthLabelRows.map((row, idx) => (
+                      <div
+                        key={`${row.fieldKey}-${idx}`}
+                        className="flex flex-wrap items-end gap-2"
+                      >
+                        <div className="flex-1 min-w-[140px]">
+                          <Label className="text-xs text-muted-foreground">
+                            Field key
+                          </Label>
+                          <Input
+                            className="mt-1 h-10 bg-white font-mono text-xs"
+                            placeholder="soil_raw_0"
+                            value={row.fieldKey}
+                            onChange={(e) => {
+                              const v = e.target.value.trim();
+                              setDepthLabelRows((prev) =>
+                                prev.map((r, i) =>
+                                  i === idx ? { ...r, fieldKey: v } : r
+                                )
+                              );
+                            }}
+                          />
+                        </div>
+                        <div className="flex-[2] min-w-[160px]">
+                          <Label className="text-xs text-muted-foreground">
+                            Label
+                          </Label>
+                          <Input
+                            className="mt-1 h-10 bg-white text-sm"
+                            placeholder="e.g. 6 inches"
+                            value={row.label}
+                            onChange={(e) =>
+                              setDepthLabelRows((prev) =>
+                                prev.map((r, i) =>
+                                  i === idx
+                                    ? { ...r, label: e.target.value }
+                                    : r
+                                )
+                              )
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-10 shrink-0 text-destructive"
+                          disabled={depthLabelRows.length <= 1}
+                          onClick={() =>
+                            setDepthLabelRows((prev) =>
+                              prev.filter((_, i) => i !== idx)
+                            )
+                          }
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-1"
+                      onClick={() =>
+                        setDepthLabelRows((prev) => [
+                          ...prev,
+                          {
+                            fieldKey: nextSoilRawFieldKey(prev),
+                            label: "",
+                          },
+                        ])
+                      }
+                    >
+                      Add depth field
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Install Date */}

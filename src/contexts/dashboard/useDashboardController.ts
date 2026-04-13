@@ -4,8 +4,16 @@ import type { ZoneFilterValue } from "@/types/zone";
 import {
   buildChartHistory,
   getChartSeriesKeys,
+  mergeDailyHistoryByDepthWithToday,
   mergeDailyHistoryWithToday,
 } from "@/lib/dashboard-chart-utils";
+import {
+  buildDepthChartHistorySingleNode,
+  buildDepthChartHistoryZoneAverage,
+  buildDepthSeriesKeysForNode,
+  buildDepthSeriesKeysForZone,
+  parseSeriesKey,
+} from "@/lib/moisture-depth-series";
 import { ref, get } from "firebase/database";
 import { signOut } from "firebase/auth";
 import { auth, database } from "@/lib/firebase";
@@ -25,6 +33,10 @@ import {
 } from "@/lib/zone-moisture-aggregate";
 import { useSensorDisplayNames } from "@/hooks/useSensorDisplayNames";
 import { useSiteSensorThresholds } from "@/hooks/useSiteSensorThresholds";
+import { useDepthLabelsByNode } from "@/hooks/useDepthLabelsByNode";
+import { useSiteSensorsGps } from "@/hooks/useSiteSensorsGps";
+import { useForecastEtDaily } from "@/hooks/useForecastEtDaily";
+import { labelForDepthIndex } from "@/lib/depth-label-utils";
 import { useToast } from "@/hooks/use-toast";
 import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
 
@@ -104,6 +116,7 @@ export function useDashboardController() {
     unassignedNodeIds,
     allNodeReadings,
     dailyHistoryByNode,
+    dailyHistoryByDepth,
     totalNodeCount,
     onlineNodeCount,
     createZone,
@@ -115,6 +128,8 @@ export function useDashboardController() {
 
   const sensorDisplayNames = useSensorDisplayNames(userSiteId);
   const sensorMoistureThresholds = useSiteSensorThresholds(userSiteId);
+  const depthLabelsByNode = useDepthLabelsByNode(userSiteId);
+  const { gpsByNodeId } = useSiteSensorsGps(userSiteId);
   const { toast } = useToast();
   const breachToastKeysRef = useRef<Set<string>>(new Set());
 
@@ -263,8 +278,12 @@ export function useDashboardController() {
     setEnabledSeries((prev) => ({ ...prev, [key]: !prev[key] }));
   };
   const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString());
-  const [chartView, setChartView] = useState<"moisture" | "water" | "forecast">("moisture");
-  const [trendTimeRange, setTrendTimeRange] = useState<"24hr" | "7day">("7day");
+  const [chartView, setChartView] = useState<
+    "moisture" | "depth" | "forecast"
+  >("moisture");
+  const [trendTimeRange, setTrendTimeRange] = useState<
+    "24hr" | "7day" | "30day"
+  >("7day");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [totalSensors, setTotalSensors] = useState(0);
   const [onlineSensors, setOnlineSensors] = useState(0);
@@ -311,6 +330,25 @@ export function useDashboardController() {
     );
   }, [dailyHistoryByNode, liveMoistureByNode]);
 
+  const liveMoistureByDepthByNode = useMemo(() => {
+    const m: Record<string, Record<string, number>> = {};
+    for (const [id, r] of Object.entries(allNodeReadings)) {
+      if (!r.moistureByDepth) continue;
+      if (Object.keys(r.moistureByDepth).length === 0) continue;
+      m[id] = { ...r.moistureByDepth };
+    }
+    return m;
+  }, [allNodeReadings]);
+
+  const dailyHistoryMergedDepth = useMemo(() => {
+    const today = getDateKey(new Date());
+    return mergeDailyHistoryByDepthWithToday(
+      dailyHistoryByDepth,
+      today,
+      liveMoistureByDepthByNode
+    );
+  }, [dailyHistoryByDepth, liveMoistureByDepthByNode]);
+
   const isWholeZoneView =
     zoneFilter !== "all" &&
     zoneFilter !== "unassigned" &&
@@ -322,7 +360,7 @@ export function useDashboardController() {
     }
   }, [zoneFilter, isWholeZoneView]);
 
-  const chartHistory = useMemo(() => {
+  const moistureChartHistory = useMemo(() => {
     if (isWholeZoneView && wholeZoneChartMode === "zoneAverage") {
       const z = zones.find((zo) => zo.id === zoneFilter);
       if (!z) return {};
@@ -354,7 +392,7 @@ export function useDashboardController() {
     unassignedNodeIds,
   ]);
 
-  const chartSeriesKeys = useMemo(() => {
+  const moistureChartSeriesKeys = useMemo(() => {
     if (isWholeZoneView && wholeZoneChartMode === "zoneAverage") {
       return [ZONE_AVERAGE_DATA_KEY];
     }
@@ -367,6 +405,46 @@ export function useDashboardController() {
     unassignedNodeIds,
   ]);
 
+  const depthChartHistory = useMemo(() => {
+    if (zoneFilter === "all" || zoneFilter === "unassigned") return {};
+    if (isNodeFilterValue(zoneFilter)) {
+      const nid = nodeIdFromZoneFilter(zoneFilter);
+      if (!nid) return {};
+      return buildDepthChartHistorySingleNode(dailyHistoryMergedDepth, nid);
+    }
+    const z = zones.find((zo) => zo.id === zoneFilter);
+    if (!z) return {};
+    return buildDepthChartHistoryZoneAverage(
+      dailyHistoryMergedDepth,
+      z.nodeIds
+    );
+  }, [zoneFilter, zones, dailyHistoryMergedDepth]);
+
+  const depthChartSeriesKeys = useMemo(() => {
+    if (zoneFilter === "all" || zoneFilter === "unassigned") return [];
+    if (isNodeFilterValue(zoneFilter)) {
+      const nid = nodeIdFromZoneFilter(zoneFilter);
+      if (!nid) return [];
+      return buildDepthSeriesKeysForNode(
+        nid,
+        dailyHistoryMergedDepth,
+        allNodeReadings
+      );
+    }
+    const z = zones.find((zo) => zo.id === zoneFilter);
+    if (!z) return [];
+    return buildDepthSeriesKeysForZone(
+      z.nodeIds,
+      dailyHistoryMergedDepth,
+      allNodeReadings
+    );
+  }, [zoneFilter, zones, dailyHistoryMergedDepth, allNodeReadings]);
+
+  const chartHistory =
+    chartView === "depth" ? depthChartHistory : moistureChartHistory;
+  const chartSeriesKeys =
+    chartView === "depth" ? depthChartSeriesKeys : moistureChartSeriesKeys;
+
   const filteredNodeIds = useMemo(
     () =>
       getFilteredNodeIds(
@@ -378,7 +456,38 @@ export function useDashboardController() {
     [zoneFilter, zones, unassignedNodeIds, allNodeReadings]
   );
 
-  const chartSeriesKeyStr = chartSeriesKeys.join(",");
+  const forecastRepresentativeGps = useMemo(() => {
+    const lats: number[] = [];
+    const lngs: number[] = [];
+    for (const id of filteredNodeIds) {
+      const g = gpsByNodeId[id];
+      if (g && Number.isFinite(g.lat) && Number.isFinite(g.lng)) {
+        lats.push(g.lat);
+        lngs.push(g.lng);
+      }
+    }
+    if (lats.length === 0) {
+      for (const g of Object.values(gpsByNodeId)) {
+        if (g && Number.isFinite(g.lat) && Number.isFinite(g.lng)) {
+          lats.push(g.lat);
+          lngs.push(g.lng);
+        }
+      }
+    }
+    if (lats.length === 0)
+      return { lat: null as number | null, lng: null as number | null };
+    return {
+      lat: lats.reduce((a, b) => a + b, 0) / lats.length,
+      lng: lngs.reduce((a, b) => a + b, 0) / lngs.length,
+    };
+  }, [filteredNodeIds, gpsByNodeId]);
+
+  const forecastEt = useForecastEtDaily(
+    forecastRepresentativeGps.lat,
+    forecastRepresentativeGps.lng
+  );
+
+  const chartSeriesKeyStr = `${chartView}:${chartSeriesKeys.join(",")}`;
   useEffect(() => {
     setEnabledSeries((prev) => {
       const next: Record<string, boolean> = {};
@@ -387,7 +496,7 @@ export function useDashboardController() {
       }
       return next;
     });
-  }, [chartSeriesKeyStr]);
+  }, [chartSeriesKeyStr, chartSeriesKeys, chartView]);
 
   const zoneSummariesForView = useMemo(() => {
     if (zoneFilter === "all") return zoneSummaries;
@@ -700,6 +809,29 @@ export function useDashboardController() {
     return data_array;
   }, [chartHistory, chartSeriesKeys]);
 
+  const trend30DayData = useMemo(() => {
+    const now = new Date();
+    const data_array: Record<string, unknown>[] = [];
+
+    for (let i = -29; i <= 0; i++) {
+      const date = new Date(now);
+      date.setDate(now.getDate() + i);
+      const dateKey = getDateKey(date);
+      const dayLabel = date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+
+      const historicalRow = chartHistory[dateKey];
+      data_array.push({
+        day: dayLabel,
+        ...fillSeriesNulls(historicalRow),
+      });
+    }
+
+    return data_array;
+  }, [chartHistory, chartSeriesKeys]);
+
   const chartData = useMemo(() => {
     const now = new Date();
     const data_array: Record<string, unknown>[] = [];
@@ -768,17 +900,23 @@ export function useDashboardController() {
       return allNodeReadings[key]?.moisture ?? 0;
     };
 
-    chartSeriesKeys.forEach((key) => {
+    moistureChartSeriesKeys.forEach((key) => {
       todayData[key] = getCurrentMoisture(key);
     });
+    todayData.et0 =
+      forecastEt.byIsoDate[today] != null
+        ? forecastEt.byIsoDate[today]
+        : null;
     forecastData.push(todayData);
 
     const dryingRates: Record<string, number> = {};
-    chartSeriesKeys.forEach((key) => {
+    moistureChartSeriesKeys.forEach((key) => {
       const todayMoisture =
-        chartHistory[today]?.[key] ?? getCurrentMoisture(key);
-      const yesterdayMoisture = chartHistory[yesterday]?.[key] ?? null;
-      const twoDaysAgoMoisture = chartHistory[twoDaysAgo]?.[key] ?? null;
+        moistureChartHistory[today]?.[key] ?? getCurrentMoisture(key);
+      const yesterdayMoisture =
+        moistureChartHistory[yesterday]?.[key] ?? null;
+      const twoDaysAgoMoisture =
+        moistureChartHistory[twoDaysAgo]?.[key] ?? null;
 
       const rates: number[] = [];
       if (
@@ -807,12 +945,17 @@ export function useDashboardController() {
         month: "short",
         day: "numeric",
       });
+      const futureKey = getDateKey(futureDate);
 
       const dayData: Record<string, unknown> = { day: dayLabel };
+      dayData.et0 =
+        forecastEt.byIsoDate[futureKey] != null
+          ? forecastEt.byIsoDate[futureKey]
+          : null;
 
-      chartSeriesKeys.forEach((key) => {
+      moistureChartSeriesKeys.forEach((key) => {
         const currentMoisture =
-          chartHistory[today]?.[key] ?? getCurrentMoisture(key);
+          moistureChartHistory[today]?.[key] ?? getCurrentMoisture(key);
         const forecastedMoisture = Math.max(
           0,
           currentMoisture - dryingRates[key] * i
@@ -825,11 +968,12 @@ export function useDashboardController() {
 
     return forecastData;
   }, [
-    chartHistory,
-    chartSeriesKeys,
+    moistureChartHistory,
+    moistureChartSeriesKeys,
     zoneFilter,
     zoneSummaries,
     allNodeReadings,
+    forecastEt.byIsoDate,
   ]);
 
   const dynamicAlerts = useMemo(() => {
@@ -851,11 +995,14 @@ export function useDashboardController() {
       key: string;
     }[] = [];
 
-    chartSeriesKeys.forEach((key) => {
-      const todayMoisture = chartHistory[today]?.[key] ?? null;
-      const yesterdayMoisture = chartHistory[yesterday]?.[key] ?? null;
-      const twoDaysAgoMoisture = chartHistory[twoDaysAgo]?.[key] ?? null;
-      const threeDaysAgoMoisture = chartHistory[threeDaysAgo]?.[key] ?? null;
+    moistureChartSeriesKeys.forEach((key) => {
+      const todayMoisture = moistureChartHistory[today]?.[key] ?? null;
+      const yesterdayMoisture =
+        moistureChartHistory[yesterday]?.[key] ?? null;
+      const twoDaysAgoMoisture =
+        moistureChartHistory[twoDaysAgo]?.[key] ?? null;
+      const threeDaysAgoMoisture =
+        moistureChartHistory[threeDaysAgo]?.[key] ?? null;
 
       const parent =
         key === ZONE_AVERAGE_DATA_KEY
@@ -928,8 +1075,8 @@ export function useDashboardController() {
 
     return alerts;
   }, [
-    chartHistory,
-    chartSeriesKeys,
+    moistureChartHistory,
+    moistureChartSeriesKeys,
     zoneFilter,
     zoneSummaries,
     allNodeReadings,
@@ -985,14 +1132,21 @@ export function useDashboardController() {
   /* eslint-enable react-hooks/exhaustive-deps */
 
   const getSeriesChartColor = (key: string, idx: number) => {
-    if (key === ZONE_AVERAGE_DATA_KEY) {
+    const parsed = parseSeriesKey(key);
+    const colorKey =
+      parsed && chartView === "depth" ? parsed.entityId : key;
+
+    if (colorKey === ZONE_AVERAGE_DATA_KEY) {
+      if (chartView === "depth") {
+        return DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length];
+      }
       const zs = zoneSummaries.find((z) => z.id === zoneFilter);
       return zs
         ? moistureStatusToChartHex(zs.status)
         : DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length];
     }
     if (zoneFilter === "all") {
-      const zs = zoneSummaries.find((z) => z.id === key);
+      const zs = zoneSummaries.find((z) => z.id === colorKey);
       return zs
         ? moistureStatusToChartHex(zs.status)
         : DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length];
@@ -1002,13 +1156,13 @@ export function useDashboardController() {
     }
     if (isNodeFilterValue(zoneFilter)) {
       const nid = nodeIdFromZoneFilter(zoneFilter);
-      if (nid && key === nid) {
+      if (nid && colorKey === nid) {
         const r = allNodeReadings[nid];
         const st = !r?.online ? "Offline" : r?.status ?? "Optimal";
         return moistureStatusToChartHex(st);
       }
     }
-    const r = allNodeReadings[key];
+    const r = allNodeReadings[colorKey];
     if (r) {
       const st = !r.online ? "Offline" : r.status ?? "Optimal";
       return moistureStatusToChartHex(st);
@@ -1021,6 +1175,45 @@ export function useDashboardController() {
   };
 
   const getSeriesChartName = (key: string) => {
+    const parsed = parseSeriesKey(key);
+    if (parsed && chartView === "depth") {
+      const depthLabel = (() => {
+        if (parsed.entityId === ZONE_AVERAGE_DATA_KEY) {
+          const zSel = zones.find((zo) => zo.id === zoneFilter);
+          const ids = isNodeFilterValue(zoneFilter)
+            ? (() => {
+                const nid = nodeIdFromZoneFilter(zoneFilter);
+                return nid ? [nid] : [];
+              })()
+            : zSel?.nodeIds ?? [];
+          for (const nid of ids) {
+            const L = labelForDepthIndex(
+              depthLabelsByNode[nid],
+              parsed.depthKey
+            );
+            if (L) return L;
+          }
+          return `Depth ${parsed.depthKey}`;
+        }
+        return (
+          labelForDepthIndex(
+            depthLabelsByNode[parsed.entityId],
+            parsed.depthKey
+          ) ?? `Depth ${parsed.depthKey}`
+        );
+      })();
+
+      if (parsed.entityId === ZONE_AVERAGE_DATA_KEY) {
+        const zn = zones.find((zo) => zo.id === zoneFilter)?.name ?? "Zone";
+        return `${zn} · ${depthLabel}`;
+      }
+      const nid = parsed.entityId;
+      const p = findZoneContainingNode(zones, nid);
+      const dn = sensorDisplayNames[nid] ?? nid;
+      const base = p ? `${p.name} · ${dn}` : dn;
+      return `${base} · ${depthLabel}`;
+    }
+
     if (key === ZONE_AVERAGE_DATA_KEY) {
       const selectedZone = zones.find((zo) => zo.id === zoneFilter);
       return selectedZone ? `${selectedZone.name} (average)` : key;
@@ -1043,6 +1236,18 @@ export function useDashboardController() {
     }
     return sensorDisplayNames[key] ?? key;
   };
+
+  const forecastChartHasEt = useMemo(
+    () =>
+      Object.values(forecastEt.byIsoDate).some(
+        (v) => typeof v === "number" && v > 0
+      ),
+    [forecastEt.byIsoDate]
+  );
+
+  const forecastGpsAvailable =
+    forecastRepresentativeGps.lat != null &&
+    forecastRepresentativeGps.lng != null;
 
 
   return {
@@ -1141,9 +1346,14 @@ export function useDashboardController() {
     generateReport,
     downloadSeasonSummary,
     trend7DayData,
+    trend30DayData,
     chartData,
     trend24HrData,
     dryingForecastData,
+    forecastChartHasEt,
+    forecastGpsAvailable,
+    forecastEtLoading: forecastEt.loading,
+    forecastEtError: forecastEt.error,
     dynamicAlerts,
     getSeriesChartColor,
     getSeriesChartName,
@@ -1151,5 +1361,6 @@ export function useDashboardController() {
     dashboardTab,
     setDashboardTab,
     goToZoneTrends,
+    depthLabelsByNode,
   };
 }
