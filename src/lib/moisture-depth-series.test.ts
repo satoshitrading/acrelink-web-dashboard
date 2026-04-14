@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDepthChartHistoryZoneAllNodes,
   buildDepthChartHistoryZoneAverage,
+  buildDepthSeriesKeysForZoneAllNodes,
   buildSeriesKey,
   collectDepthKeysForNodes,
   parseSeriesKey,
@@ -59,5 +61,26 @@ describe("moisture-depth-series", () => {
       "1",
       "2",
     ]);
+  });
+
+  it("buildDepthChartHistoryZoneAllNodes merges per-node depth rows", () => {
+    const merged = {
+      "2025-01-01": {
+        a: { "0": 40 },
+        b: { "0": 60 },
+      },
+    };
+    const hist = buildDepthChartHistoryZoneAllNodes(merged, ["a", "b"]);
+    expect(hist["2025-01-01"][buildSeriesKey("a", "0")]).toBe(40);
+    expect(hist["2025-01-01"][buildSeriesKey("b", "0")]).toBe(60);
+  });
+
+  it("buildDepthSeriesKeysForZoneAllNodes lists each node depth series", () => {
+    const merged = {
+      d1: { n1: { "0": 1 }, n2: { "0": 2 } },
+    };
+    const live = {} as Record<string, import("@/types/zone").NodeReading>;
+    const keys = buildDepthSeriesKeysForZoneAllNodes(["n1", "n2"], merged, live);
+    expect(keys).toEqual([buildSeriesKey("n1", "0"), buildSeriesKey("n2", "0")]);
   });
 });

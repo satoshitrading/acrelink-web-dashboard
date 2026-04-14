@@ -1,5 +1,4 @@
-﻿import { getDateKey } from "@/lib/date-utils";
-import { ZONE_AVERAGE_DATA_KEY } from "@/lib/zone-moisture-aggregate";
+﻿import { ZONE_AVERAGE_DATA_KEY } from "@/lib/zone-moisture-aggregate";
 import { parseSeriesKey } from "@/lib/moisture-depth-series";
 import {
   findZoneContainingNode,
@@ -11,6 +10,7 @@ import {
   calibrateKVwcPerMmEt,
   findWarnThresholdCrossing,
   projectVwcWithEt,
+  resolveEtMmForDate,
 } from "@/lib/vwc-et-projection";
 
 function averageZoneDepthLive(
@@ -175,7 +175,6 @@ export function buildDryingForecastChart(args: {
   }
 
   const rows: Record<string, unknown>[] = [];
-  const todayKey = getDateKey(now);
 
   const firstRow: Record<string, unknown> = {
     day: now.toLocaleDateString("en-US", {
@@ -183,7 +182,7 @@ export function buildDryingForecastChart(args: {
       month: "short",
       day: "numeric",
     }),
-    et0: etLookup[todayKey] ?? null,
+    et0: resolveEtMmForDate(now, etLookup) ?? null,
   };
   for (const p of projections) {
     firstRow[p.key] =
@@ -194,13 +193,12 @@ export function buildDryingForecastChart(args: {
   for (let i = 1; i <= 7; i++) {
     const futureDate = new Date(now);
     futureDate.setDate(now.getDate() + i);
-    const futureKey = getDateKey(futureDate);
     const dayData: Record<string, unknown> = {
       day: futureDate.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
       }),
-      et0: etLookup[futureKey] ?? null,
+      et0: resolveEtMmForDate(futureDate, etLookup) ?? null,
     };
     for (const p of projections) {
       dayData[p.key] = p.points[i] != null ? p.points[i]!.vwc : null;

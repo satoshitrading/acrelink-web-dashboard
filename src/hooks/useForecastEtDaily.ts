@@ -38,7 +38,7 @@ export function useForecastEtDaily(
 
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${latR}&longitude=${lngR}` +
-      `&daily=et0_fao_evapotranspiration&forecast_days=8&past_days=7&timezone=auto`;
+      `&daily=et0_fao_evapotranspiration&forecast_days=10&past_days=7&timezone=auto`;
 
     fetch(url)
       .then((r) => {

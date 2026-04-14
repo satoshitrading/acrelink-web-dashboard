@@ -9,9 +9,11 @@ import {
 } from "@/lib/dashboard-chart-utils";
 import {
   buildDepthChartHistorySingleNode,
+  buildDepthChartHistoryZoneAllNodes,
   buildDepthChartHistoryZoneAverage,
   buildDepthSeriesKeysForNode,
   buildDepthSeriesKeysForZone,
+  buildDepthSeriesKeysForZoneAllNodes,
   parseSeriesKey,
 } from "@/lib/moisture-depth-series";
 import { ref, get } from "firebase/database";
@@ -444,15 +446,49 @@ export function useDashboardController() {
     if (zoneFilter === "all" || zoneFilter === "unassigned") {
       return moistureChartSeriesKeys;
     }
+    if (isWholeZoneView && wholeZoneChartMode === "nodes") {
+      const z = zones.find((zo) => zo.id === zoneFilter);
+      if (!z?.nodeIds.length) return [];
+      return buildDepthSeriesKeysForZoneAllNodes(
+        z.nodeIds,
+        dailyHistoryMergedDepth,
+        allNodeReadings
+      );
+    }
     return depthChartSeriesKeys;
-  }, [zoneFilter, moistureChartSeriesKeys, depthChartSeriesKeys]);
+  }, [
+    zoneFilter,
+    moistureChartSeriesKeys,
+    depthChartSeriesKeys,
+    isWholeZoneView,
+    wholeZoneChartMode,
+    zones,
+    dailyHistoryMergedDepth,
+    allNodeReadings,
+  ]);
 
   const forecastSeriesHistory = useMemo(() => {
     if (zoneFilter === "all" || zoneFilter === "unassigned") {
       return moistureChartHistory;
     }
+    if (isWholeZoneView && wholeZoneChartMode === "nodes") {
+      const z = zones.find((zo) => zo.id === zoneFilter);
+      if (!z?.nodeIds.length) return {};
+      return buildDepthChartHistoryZoneAllNodes(
+        dailyHistoryMergedDepth,
+        z.nodeIds
+      );
+    }
     return depthChartHistory;
-  }, [zoneFilter, moistureChartHistory, depthChartHistory]);
+  }, [
+    zoneFilter,
+    moistureChartHistory,
+    depthChartHistory,
+    isWholeZoneView,
+    wholeZoneChartMode,
+    zones,
+    dailyHistoryMergedDepth,
+  ]);
 
 
   const chartHistory =

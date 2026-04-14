@@ -74,6 +74,41 @@ export function buildDepthSeriesKeysForNode(
 }
 
 /**
+ * All `nodeId|depth` series for every node in the zone (e.g. whole-zone forecast: one line per node per depth).
+ */
+export function buildDepthSeriesKeysForZoneAllNodes(
+  zoneNodeIds: string[],
+  mergedByDepth: Record<string, Record<string, Record<string, number>>>,
+  liveReadings: Record<string, NodeReading>
+): string[] {
+  const keys: string[] = [];
+  for (const nid of zoneNodeIds) {
+    keys.push(
+      ...buildDepthSeriesKeysForNode(nid, mergedByDepth, liveReadings)
+    );
+  }
+  return keys;
+}
+
+/**
+ * Merge per-node depth histories for every node in the zone into one chart history object.
+ */
+export function buildDepthChartHistoryZoneAllNodes(
+  mergedByDepth: Record<string, Record<string, Record<string, number>>>,
+  zoneNodeIds: string[]
+): Record<string, Record<string, number>> {
+  const result: Record<string, Record<string, number>> = {};
+  for (const nid of zoneNodeIds) {
+    const one = buildDepthChartHistorySingleNode(mergedByDepth, nid);
+    for (const [dateKey, row] of Object.entries(one)) {
+      if (!result[dateKey]) result[dateKey] = {};
+      Object.assign(result[dateKey], row);
+    }
+  }
+  return result;
+}
+
+/**
  * Per-date rows keyed by `buildSeriesKey(ZONE_AVERAGE_DATA_KEY, depth)` from zone node averages.
  */
 export function buildDepthChartHistoryZoneAverage(

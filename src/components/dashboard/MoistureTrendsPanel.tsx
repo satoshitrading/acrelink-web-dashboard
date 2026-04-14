@@ -133,7 +133,8 @@ export function MoistureTrendsPanel() {
                   </Button>
                 </div>
               )}
-              {isWholeZoneView && chartView === "moisture" && (
+              {isWholeZoneView &&
+                (chartView === "moisture" || chartView === "forecast") && (
                 <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5 self-stretch sm:self-auto">
                   <Button
                     type="button"

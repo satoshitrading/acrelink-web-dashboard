@@ -1,10 +1,29 @@
-﻿import { getDateKey } from "@/lib/date-utils";
+﻿import { getDateKey, getLocalDateKey } from "@/lib/date-utils";
 
 export const DEFAULT_K_VWC_PER_MM_ET = 0.12;
 export const K_VWC_PER_MM_ET_MIN = 0.02;
 export const K_VWC_PER_MM_ET_MAX = 2.5;
 /** When Open-Meteo has no value for a date key, assume this ET₀ (mm/day) so projection still depletes. */
 export const FALLBACK_ET_MM_PER_DAY = 4;
+
+/**
+ * Resolve ET₀ for a calendar day against Open-Meteo `daily.time` keys.
+ * Tries local date first (matches `timezone=auto`), then UTC key as fallback for edge TZ skew.
+ */
+export function resolveEtMmForDate(
+  d: Date,
+  etByIsoDate: Record<string, number | undefined>
+): number | undefined {
+  const local = getLocalDateKey(d);
+  const utc = getDateKey(d);
+  const a = etByIsoDate[local];
+  if (a != null && Number.isFinite(a)) return a;
+  if (utc !== local) {
+    const b = etByIsoDate[utc];
+    if (b != null && Number.isFinite(b)) return b;
+  }
+  return undefined;
+}
 
 /** Calendar days between two YYYY-MM-DD strings (UTC noon anchors). */
 export function calendarDaysBetweenIso(prevIso: string, currIso: string): number {
@@ -54,13 +73,13 @@ export function projectVwcWithEt(
 ): VwcProjectionPoint[] {
   const out: VwcProjectionPoint[] = [];
   let v = anchorVwc;
-  const todayKey = getDateKey(startDate);
+  const todayKey = getLocalDateKey(startDate);
   out.push({ isoDate: todayKey, vwc: Math.round(Math.max(0, v) * 10) / 10 });
   for (let i = 1; i <= futureDayCount; i++) {
     const d = new Date(startDate);
     d.setDate(startDate.getDate() + i);
-    const iso = getDateKey(d);
-    const rawEt = etByIsoDate[iso];
+    const iso = getLocalDateKey(d);
+    const rawEt = resolveEtMmForDate(d, etByIsoDate);
     const et =
       rawEt != null && Number.isFinite(rawEt)
         ? rawEt
