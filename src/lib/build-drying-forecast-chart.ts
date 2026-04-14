@@ -219,7 +219,7 @@ export function buildDryingForecastChart(args: {
           .fractionalDayFromStart,
       }));
     if (anyBelow) {
-      projectedIrrigationLabel = `At or below your ${th.warn}% warning threshold now — irrigate or monitor closely.`;
+      projectedIrrigationLabel = `At or below your ${th.warn}% warning threshold now - irrigate or monitor closely.`;
     } else if (crosses.length > 0) {
       crosses.sort((a, b) => a.frac - b.frac);
       const minF = crosses[0]!.frac;

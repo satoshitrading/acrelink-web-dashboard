@@ -417,11 +417,17 @@ export function useDashboardController() {
     }
     const z = zones.find((zo) => zo.id === zoneFilter);
     if (!z) return {};
+    if (wholeZoneChartMode === "nodes") {
+      return buildDepthChartHistoryZoneAllNodes(
+        dailyHistoryMergedDepth,
+        z.nodeIds
+      );
+    }
     return buildDepthChartHistoryZoneAverage(
       dailyHistoryMergedDepth,
       z.nodeIds
     );
-  }, [zoneFilter, zones, dailyHistoryMergedDepth]);
+  }, [zoneFilter, zones, dailyHistoryMergedDepth, wholeZoneChartMode]);
 
   const depthChartSeriesKeys = useMemo(() => {
     if (zoneFilter === "all" || zoneFilter === "unassigned") return [];
@@ -436,59 +442,38 @@ export function useDashboardController() {
     }
     const z = zones.find((zo) => zo.id === zoneFilter);
     if (!z) return [];
-    return buildDepthSeriesKeysForZone(
-      z.nodeIds,
-      dailyHistoryMergedDepth,
-      allNodeReadings
-    );
-  }, [zoneFilter, zones, dailyHistoryMergedDepth, allNodeReadings]);
-  const forecastSeriesKeys = useMemo(() => {
-    if (zoneFilter === "all" || zoneFilter === "unassigned") {
-      return moistureChartSeriesKeys;
-    }
-    if (isWholeZoneView && wholeZoneChartMode === "nodes") {
-      const z = zones.find((zo) => zo.id === zoneFilter);
-      if (!z?.nodeIds.length) return [];
+    if (wholeZoneChartMode === "nodes") {
       return buildDepthSeriesKeysForZoneAllNodes(
         z.nodeIds,
         dailyHistoryMergedDepth,
         allNodeReadings
       );
     }
-    return depthChartSeriesKeys;
+    return buildDepthSeriesKeysForZone(
+      z.nodeIds,
+      dailyHistoryMergedDepth,
+      allNodeReadings
+    );
   }, [
     zoneFilter,
-    moistureChartSeriesKeys,
-    depthChartSeriesKeys,
-    isWholeZoneView,
-    wholeZoneChartMode,
     zones,
     dailyHistoryMergedDepth,
     allNodeReadings,
+    wholeZoneChartMode,
   ]);
+  const forecastSeriesKeys = useMemo(() => {
+    if (zoneFilter === "all" || zoneFilter === "unassigned") {
+      return moistureChartSeriesKeys;
+    }
+    return depthChartSeriesKeys;
+  }, [zoneFilter, moistureChartSeriesKeys, depthChartSeriesKeys]);
 
   const forecastSeriesHistory = useMemo(() => {
     if (zoneFilter === "all" || zoneFilter === "unassigned") {
       return moistureChartHistory;
     }
-    if (isWholeZoneView && wholeZoneChartMode === "nodes") {
-      const z = zones.find((zo) => zo.id === zoneFilter);
-      if (!z?.nodeIds.length) return {};
-      return buildDepthChartHistoryZoneAllNodes(
-        dailyHistoryMergedDepth,
-        z.nodeIds
-      );
-    }
     return depthChartHistory;
-  }, [
-    zoneFilter,
-    moistureChartHistory,
-    depthChartHistory,
-    isWholeZoneView,
-    wholeZoneChartMode,
-    zones,
-    dailyHistoryMergedDepth,
-  ]);
+  }, [zoneFilter, moistureChartHistory, depthChartHistory]);
 
 
   const chartHistory =
@@ -1160,36 +1145,24 @@ export function useDashboardController() {
   const getSeriesChartName = (key: string) => {
     const parsed = parseSeriesKey(key);
     if (parsed && (chartView === "depth" || chartView === "forecast")) {
-      const depthLabel = (() => {
-        if (parsed.entityId === ZONE_AVERAGE_DATA_KEY) {
-          const zSel = zones.find((zo) => zo.id === zoneFilter);
-          const ids = isNodeFilterValue(zoneFilter)
-            ? (() => {
-                const nid = nodeIdFromZoneFilter(zoneFilter);
-                return nid ? [nid] : [];
-              })()
-            : zSel?.nodeIds ?? [];
-          for (const nid of ids) {
-            const L = labelForDepthIndex(
-              depthLabelsByNode[nid],
-              parsed.depthKey
-            );
-            if (L) return L;
-          }
-          return `Depth ${parsed.depthKey}`;
-        }
-        return (
-          labelForDepthIndex(
-            depthLabelsByNode[parsed.entityId],
-            parsed.depthKey
-          ) ?? `Depth ${parsed.depthKey}`
-        );
-      })();
-
       if (parsed.entityId === ZONE_AVERAGE_DATA_KEY) {
         const zn = zones.find((zo) => zo.id === zoneFilter)?.name ?? "Zone";
-        return `${zn} · ${depthLabel}`;
+        const zoneAvgKeys = chartSeriesKeys.filter((k) => {
+          const p = parseSeriesKey(k);
+          return p?.entityId === ZONE_AVERAGE_DATA_KEY;
+        });
+        if (zoneAvgKeys.length > 1) {
+          return `${zn} · (average) · ${parsed.depthKey}`;
+        }
+        return `${zn} · (average)`;
       }
+
+      const depthLabel =
+        labelForDepthIndex(
+          depthLabelsByNode[parsed.entityId],
+          parsed.depthKey
+        ) ?? `Depth ${parsed.depthKey}`;
+
       const nid = parsed.entityId;
       const p = findZoneContainingNode(zones, nid);
       const dn = sensorDisplayNames[nid] ?? nid;

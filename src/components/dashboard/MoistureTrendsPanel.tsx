@@ -134,7 +134,9 @@ export function MoistureTrendsPanel() {
                 </div>
               )}
               {isWholeZoneView &&
-                (chartView === "moisture" || chartView === "forecast") && (
+                (chartView === "moisture" ||
+                  chartView === "forecast" ||
+                  chartView === "depth") && (
                 <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5 self-stretch sm:self-auto">
                   <Button
                     type="button"
@@ -415,7 +417,12 @@ export function MoistureTrendsPanel() {
                     : trendTimeRange === "30day"
                       ? "30-day window"
                       : "7-day window"}{" "}
-                  • one line per depth (zone average or selected node).
+                  •{" "}
+                  {isWholeZoneView && wholeZoneChartMode === "nodes"
+                    ? "one line per depth for each node in the zone."
+                    : isWholeZoneView && wholeZoneChartMode === "zoneAverage"
+                      ? "one line per depth (zone average)."
+                      : "one line per depth (zone average or selected node)."}
                 </p>
                 <div className="flex justify-center gap-2 mt-3">
                   <Button
