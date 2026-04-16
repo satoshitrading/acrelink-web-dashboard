@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { get, ref, update } from "firebase/database";
+import { onAuthStateChanged } from "firebase/auth";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { auth, database } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
@@ -21,21 +22,34 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [phone, setPhone] = useState("");
   const [optIn, setOptIn] = useState(false);
+  const [userUid, setUserUid] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      const user = auth.currentUser;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
+        setUserUid(null);
+        setLoading(false);
         navigate("/auth");
         return;
       }
 
+      setUserUid(user.uid);
       try {
         const snap = await get(ref(database, `users/${user.uid}`));
         if (snap.exists()) {
           const data = snap.val() as Record<string, unknown>;
-          setPhone(typeof data.phone === "string" ? data.phone : "");
+          const rawPhone = data.phone;
+          if (typeof rawPhone === "string") {
+            setPhone(rawPhone);
+          } else if (typeof rawPhone === "number") {
+            setPhone(String(rawPhone));
+          } else {
+            setPhone("");
+          }
           setOptIn(data.smsOptIn === true);
+        } else {
+          setPhone("");
+          setOptIn(false);
         }
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Could not load account settings.";
@@ -43,14 +57,13 @@ const Settings = () => {
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    loadProfile();
+    return () => unsubscribe();
   }, [navigate, toast]);
 
   const handleSave = async () => {
-    const user = auth.currentUser;
-    if (!user) {
+    if (!userUid) {
       navigate("/auth");
       return;
     }
@@ -58,7 +71,7 @@ const Settings = () => {
     if (!optIn) {
       setSaving(true);
       try {
-        await update(ref(database, `users/${user.uid}`), {
+        await update(ref(database, `users/${userUid}`), {
           smsOptIn: false,
           phoneUpdatedAt: new Date().toISOString(),
         });
@@ -88,7 +101,7 @@ const Settings = () => {
 
     setSaving(true);
     try {
-      await update(ref(database, `users/${user.uid}`), {
+      await update(ref(database, `users/${userUid}`), {
         phone: normalized,
         smsOptIn: true,
         phoneUpdatedAt: new Date().toISOString(),
