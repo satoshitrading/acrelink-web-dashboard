@@ -75,7 +75,7 @@ export function MoistureTrendsPanel() {
   const subtitle =
     chartView === "forecast"
       ? forecastChartHasEt
-        ? "ET₀-driven projected VWC (dashed) from current readings; ET₀ from Open-Meteo (bars, mm/day)."
+        ? "ET₀-driven projected VWC (dashed) from current readings; ET₀ from Open-Meteo."
         : forecastGpsAvailable
           ? forecastEtLoading
             ? "Loading ET₀ overlay…"
@@ -148,7 +148,7 @@ export function MoistureTrendsPanel() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 sm:items-end shrink-0 w-full lg:w-auto">
-              {chartView === "depth" && !depthNeedsSelection && (
+              {/* {chartView === "depth" && !depthNeedsSelection && (
                 <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5 self-stretch sm:self-auto">
                   <Button
                     onClick={() => setDepthLabelsModalOpen(true)}
@@ -159,7 +159,7 @@ export function MoistureTrendsPanel() {
                     Edit depth labels
                   </Button>
                 </div>
-              )}
+              )} */}
               {isWholeZoneView &&
                 (chartView === "moisture" ||
                   chartView === "forecast" ||
@@ -249,14 +249,14 @@ export function MoistureTrendsPanel() {
             >
               Soil Moisture
             </Button>
-            <Button
+            {/* <Button
               onClick={() => setChartView("depth")}
               variant={chartView === "depth" ? "default" : "outline"}
               size="sm"
               className="text-xs"
             >
               Depth Breakdown
-            </Button>
+            </Button> */}
             <Button
               onClick={() => setChartView("forecast")}
               variant={chartView === "forecast" ? "default" : "outline"}
