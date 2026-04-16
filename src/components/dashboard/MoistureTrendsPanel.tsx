@@ -87,6 +87,13 @@ export function MoistureTrendsPanel() {
         ? "Historical VWC by soil depth for the selected zone or node (one line per depth)."
         : `Historical data • Green shaded area is optimal moisture (${optimalBandRange.max}%–${optimalBandRange.min}%)`;
 
+  const chartTitle =
+    chartView === "forecast"
+      ? "Drying Forecast"
+      : chartView === "depth"
+        ? "Depth Breakdown"
+        : "Soil Moisture";
+
   const depthLabelEditNodeIds = useMemo(() => {
     if (chartView !== "depth" || depthNeedsSelection) return [];
     if (isNodeFilterValue(zoneFilter)) {
@@ -104,6 +111,26 @@ export function MoistureTrendsPanel() {
         ? trend30DayData
         : trend7DayData;
 
+  /** Right-axis domain for ET₀ bars: padded so bars use less vertical space than auto domain. */
+  const forecastEtAxisDomain = useMemo((): [number, number] => {
+    const rows = dryingForecastData as Record<string, unknown>[];
+    const etVals: number[] = [];
+    for (const row of rows) {
+      const v = row.et0;
+      if (typeof v === "number" && Number.isFinite(v)) etVals.push(v);
+    }
+    if (etVals.length === 0) return [0, 12];
+    const maxEt = Math.max(...etVals);
+    if (maxEt <= 0) return [0, 12];
+    const MIN_UPPER_MM = 10;
+    const upper = Math.max(
+      maxEt * 1.35,
+      maxEt + 1.5,
+      MIN_UPPER_MM
+    );
+    return [0, Math.ceil(upper * 10) / 10];
+  }, [dryingForecastData]);
+
   return (
     <Card
       id="moisture-trends-section"
@@ -114,7 +141,7 @@ export function MoistureTrendsPanel() {
           <div className="flex flex-col lg:flex-row lg:items-end gap-4 lg:justify-between">
             <div className="min-w-0 flex-1">
               <CardTitle className="text-[clamp(20px,2vw,30px)] font-display font-bold">
-                Moisture Trends by Zone
+                {chartTitle}
               </CardTitle>
               <p className="text-[clamp(14px,2vw,18px)] text-muted-foreground">
                 {subtitle}
@@ -504,6 +531,7 @@ export function MoistureTrendsPanel() {
                   <YAxis
                     yAxisId="right"
                     orientation="right"
+                    domain={forecastEtAxisDomain}
                     label={{
                       value: "ET₀ (mm/day)",
                       angle: 90,
@@ -568,9 +596,9 @@ export function MoistureTrendsPanel() {
                     dataKey="et0"
                     name="ET₀ (mm/day)"
                     fill="hsl(var(--chart-2))"
-                    fillOpacity={0.85}
-                    barSize={18}
-                    radius={[4, 4, 0, 0]}
+                    fillOpacity={0.38}
+                    barSize={12}
+                    radius={[3, 3, 0, 0]}
                   />
                 )}
               </ComposedChart>
