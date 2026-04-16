@@ -14,6 +14,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import ZoneDetailPage from "./pages/ZoneDetailPage";
 import Technicians from "./pages/Technicians";
+import Settings from "./pages/Settings";
 import "react-quill/dist/quill.snow.css";
 
 const queryClient = new QueryClient();
@@ -58,6 +59,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Service />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             }
           />

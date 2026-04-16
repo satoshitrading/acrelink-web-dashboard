@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Menu } from "lucide-react";
+import { LogOut, Menu, Settings, UserCircle2 } from "lucide-react";
 import acreLinkLogo from "@/assets/acrelink-logo.png";
 import { useDashboard } from "@/contexts/dashboard/DashboardContext";
 
@@ -23,10 +23,17 @@ export function DashboardNav() {
     <nav className="bg-card border-b-2 border-border/50 sticky top-0 z-50 shadow-industrial">
       <div className="max-w-7xl mx-auto px-6 py-4 flex flex-wrap lg:gap-0 gap-4 items-center justify-between">
         <div className="flex items-center gap-4">
-          <img src={acreLinkLogo} alt="AcreLink" className="h-12 w-auto drop-shadow-md" />
-          <div>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="flex items-center gap-4 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Go to dashboard home"
+          >
+            <img src={acreLinkLogo} alt="AcreLink" className="h-12 w-auto drop-shadow-md" />
+            <div>
             <h1 className="text-2xl font-display font-bold text-foreground">AcreLink Dashboard</h1>
-          </div>
+            </div>
+          </button>
         </div>
         <div className="flex items-center gap-4 lg:w-[unset] justify-[unset] w-full justify-between">
           {availableSiteIds.length > 1 && (
@@ -55,33 +62,56 @@ export function DashboardNav() {
                 Add Technician
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-2 bg-background text-[#3a3835] hover:bg-accent hover:text-accent-foreground"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="outline" className="border-2" aria-label="Account menu">
+                  <UserCircle2 className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="outline" className="md:hidden border-2">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              {isAdmin && (
-                <DropdownMenuItem onClick={() => navigate("/technicians")}>Add Technician</DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="md:hidden flex items-center gap-2">
+            {isAdmin && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="outline" className="border-2" aria-label="Admin menu">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onClick={() => navigate("/technicians")}>Add Technician</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="outline" className="border-2" aria-label="Account menu">
+                  <UserCircle2 className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </nav>
