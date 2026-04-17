@@ -89,7 +89,7 @@ const ZoneDetailPage = () => {
     updateZone,
     assignNodesToZone,
   } = useZones(userSiteId);
-  const { gpsByNodeId, loading: gpsLoading } = useSiteSensorsGps(userSiteId);
+  const { gpsByNodeId, nodeExportByNodeId, loading: gpsLoading } = useSiteSensorsGps(userSiteId);
   const sensorDisplayNames = useSensorDisplayNames(userSiteId);
   const { toast } = useToast();
 
@@ -290,13 +290,18 @@ const ZoneDetailPage = () => {
 
   const handleDownloadZoneGeoJSON = useCallback(() => {
     if (!zone) return;
-    const fc = singleZoneToGeoJSONFeatureCollection(zone, gpsByNodeId);
+    const fc = singleZoneToGeoJSONFeatureCollection(
+      zone,
+      gpsByNodeId,
+      nodeExportByNodeId
+    );
     downloadGeoJSONObject(`zone-${zone.id}`, fc);
     toast({
       title: "Download started",
-      description: "GeoJSON includes hull or annulus when geometry is available.",
+      description:
+        "GeoJSON includes zone polygon geometry and node point features when GPS is available.",
     });
-  }, [zone, gpsByNodeId, toast]);
+  }, [zone, gpsByNodeId, nodeExportByNodeId, toast]);
 
   const handleBulkAddNodesInGeometry = useCallback(async () => {
     if (!zone) return;

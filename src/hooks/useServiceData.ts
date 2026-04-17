@@ -33,6 +33,7 @@ export type SensorMeta = {
   id: string;
   /** Farmer-facing display name (preferred over legacy `label`). */
   name?: string;
+  updatedAt?: string;
   /** When true, zone auto-naming must not overwrite `name`. */
   nameManual?: boolean;
   label?: string;

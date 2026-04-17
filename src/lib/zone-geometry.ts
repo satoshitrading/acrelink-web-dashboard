@@ -1,5 +1,6 @@
 import type { Zone } from "@/types/zone";
 import { convexHull, type Point2 } from "@/lib/convex-hull";
+import type { SiteSensorGeoExportRow } from "@/hooks/useSiteSensorsGps";
 
 const EARTH_RADIUS_M = 6_371_000;
 const DEFAULT_ANNULUS_SEGMENTS = 64;
@@ -225,10 +226,15 @@ type GeoJSONPolygon = {
   coordinates: number[][][];
 };
 
+type GeoJSONPoint = {
+  type: "Point";
+  coordinates: [number, number];
+};
+
 export type GeoJSONFeature = {
   type: "Feature";
   properties: Record<string, unknown>;
-  geometry: GeoJSONPolygon | null;
+  geometry: GeoJSONPolygon | GeoJSONPoint | null;
 };
 
 export type GeoJSONFeatureCollection = {
@@ -243,11 +249,17 @@ export function zoneToGeoJSONPolygonFeature(
   zone: Zone,
   gpsByNodeId: Record<string, { lat: number; lng: number }>
 ): GeoJSONFeature {
+  const baseProperties: Record<string, unknown> = {
+    zoneId: zone.id,
+    name: zone.name,
+    nodeCount: zone.nodeIds.length,
+    lastUpdated: zone.updatedAt,
+  };
   const positions = getZoneMapPositions(zone, gpsByNodeId);
   if (!positions) {
     return {
       type: "Feature",
-      properties: { zoneId: zone.id, name: zone.name },
+      properties: baseProperties,
       geometry: null,
     };
   }
@@ -265,7 +277,7 @@ export function zoneToGeoJSONPolygonFeature(
         : ring;
     return {
       type: "Feature",
-      properties: { zoneId: zone.id, name: zone.name },
+      properties: baseProperties,
       geometry: {
         type: "Polygon",
         coordinates: [ringToGeoJSON(closed)],
@@ -285,7 +297,7 @@ export function zoneToGeoJSONPolygonFeature(
 
   return {
     type: "Feature",
-    properties: { zoneId: zone.id, name: zone.name },
+    properties: baseProperties,
     geometry: {
       type: "Polygon",
       coordinates: [ringToGeoJSON(close(outer)), ringToGeoJSON(close(inner))],
@@ -293,25 +305,63 @@ export function zoneToGeoJSONPolygonFeature(
   };
 }
 
+export function zoneNodePointFeatures(
+  zone: Zone,
+  gpsByNodeId: Record<string, { lat: number; lng: number }>,
+  nodeExportByNodeId: Record<string, SiteSensorGeoExportRow>
+): GeoJSONFeature[] {
+  const out: GeoJSONFeature[] = [];
+  for (const nodeId of zone.nodeIds) {
+    const gps = gpsByNodeId[nodeId];
+    if (!gps) continue;
+    const sensorMeta = nodeExportByNodeId[nodeId];
+    out.push({
+      type: "Feature",
+      properties: {
+        zoneId: zone.id,
+        nodeId,
+        name: sensorMeta?.displayName ?? nodeId,
+        depth: sensorMeta?.depth ?? null,
+        lastUpdated: sensorMeta?.lastUpdated ?? null,
+      },
+      geometry: {
+        type: "Point",
+        coordinates: [gps.lng, gps.lat],
+      },
+    });
+  }
+  return out;
+}
+
 /** All site zones as a GeoJSON FeatureCollection (hull or annulus per zone). */
 export function siteZonesToGeoJSONFeatureCollection(
   zones: Zone[],
-  gpsByNodeId: Record<string, { lat: number; lng: number }>
+  gpsByNodeId: Record<string, { lat: number; lng: number }>,
+  nodeExportByNodeId: Record<string, SiteSensorGeoExportRow>
 ): GeoJSONFeatureCollection {
+  const features: GeoJSONFeature[] = [];
+  for (const zone of zones) {
+    features.push(zoneToGeoJSONPolygonFeature(zone, gpsByNodeId));
+    features.push(...zoneNodePointFeatures(zone, gpsByNodeId, nodeExportByNodeId));
+  }
   return {
     type: "FeatureCollection",
-    features: zones.map((z) => zoneToGeoJSONPolygonFeature(z, gpsByNodeId)),
+    features,
   };
 }
 
 /** Single zone wrapped as a FeatureCollection (handy for downloads). */
 export function singleZoneToGeoJSONFeatureCollection(
   zone: Zone,
-  gpsByNodeId: Record<string, { lat: number; lng: number }>
+  gpsByNodeId: Record<string, { lat: number; lng: number }>,
+  nodeExportByNodeId: Record<string, SiteSensorGeoExportRow>
 ): GeoJSONFeatureCollection {
   return {
     type: "FeatureCollection",
-    features: [zoneToGeoJSONPolygonFeature(zone, gpsByNodeId)],
+    features: [
+      zoneToGeoJSONPolygonFeature(zone, gpsByNodeId),
+      ...zoneNodePointFeatures(zone, gpsByNodeId, nodeExportByNodeId),
+    ],
   };
 }
 

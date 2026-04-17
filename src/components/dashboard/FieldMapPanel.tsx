@@ -136,7 +136,7 @@ export function FieldMapPanel() {
     createZone,
   } = useDashboard();
 
-  const { gpsByNodeId, loading: gpsLoading } = useSiteSensorsGps(userSiteId);
+  const { gpsByNodeId, nodeExportByNodeId, loading: gpsLoading } = useSiteSensorsGps(userSiteId);
 
   const markers = useMemo(() => {
     const out: {
@@ -330,11 +330,15 @@ export function FieldMapPanel() {
 
   const handleDownloadAllZonesGeoJSON = useCallback(() => {
     if (!userSiteId?.trim() || zones.length === 0) return;
-    const fc = siteZonesToGeoJSONFeatureCollection(zones, gpsByNodeId);
+    const fc = siteZonesToGeoJSONFeatureCollection(
+      zones,
+      gpsByNodeId,
+      nodeExportByNodeId
+    );
     const safe = userSiteId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32) || "site";
     downloadGeoJSONObject(`zones-${safe}`, fc);
-    toast.success("GeoJSON download started");
-  }, [userSiteId, zones, gpsByNodeId]);
+    toast.success("GeoJSON download started (zone polygons + node points).");
+  }, [userSiteId, zones, gpsByNodeId, nodeExportByNodeId]);
 
   return (
     <Card className="border-2 border-border/50 shadow-industrial mb-8 overflow-hidden">

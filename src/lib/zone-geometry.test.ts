@@ -4,8 +4,11 @@ import {
   hasValidPivotGeometry,
   buildAnnulusPolygonPositions,
   zoneToGeoJSONPolygonFeature,
+  singleZoneToGeoJSONFeatureCollection,
+  siteZonesToGeoJSONFeatureCollection,
   pointInPolygonRing,
 } from "./zone-geometry";
+import type { SiteSensorGeoExportRow } from "@/hooks/useSiteSensorsGps";
 import type { Zone } from "@/types/zone";
 
 function baseZone(over: Partial<Zone>): Zone {
@@ -127,5 +130,109 @@ describe("zoneToGeoJSONPolygonFeature", () => {
     expect(f.geometry!.type).toBe("Polygon");
     expect(f.geometry!.coordinates.length).toBe(2);
     expect(f.geometry!.coordinates[0][0][0]).toBeTypeOf("number");
+  });
+
+  it("includes nodeCount and lastUpdated in polygon properties", () => {
+    const zone = baseZone({
+      nodeIds: ["n1", "n2", "n3"],
+      updatedAt: "2026-04-16T10:00:00.000Z",
+      isCenterPivot: true,
+      centerLat: 40,
+      centerLng: -100,
+      innerRadiusM: 50,
+      outerRadiusM: 200,
+    });
+    const f = zoneToGeoJSONPolygonFeature(zone, {});
+    expect(f.properties.nodeCount).toBe(3);
+    expect(f.properties.lastUpdated).toBe("2026-04-16T10:00:00.000Z");
+  });
+});
+
+describe("GeoJSON FeatureCollection exports", () => {
+  const gpsByNodeId = {
+    n1: { lat: 40.1, lng: -100.1 },
+    n2: { lat: 40.2, lng: -100.2 },
+  };
+
+  const nodeExportByNodeId: Record<string, SiteSensorGeoExportRow> = {
+    n1: {
+      displayName: "North Sensor 1",
+      depth: "Shallow (0–6 in)",
+      lastUpdated: "2026-04-16T10:30:00.000Z",
+    },
+    n2: {
+      displayName: "North Sensor 2",
+      depth: null,
+      lastUpdated: null,
+    },
+  };
+
+  it("single-zone export returns polygon then node Point features", () => {
+    const zone = baseZone({
+      nodeIds: ["n1", "n2", "n3"],
+      isCenterPivot: true,
+      centerLat: 40,
+      centerLng: -100,
+      innerRadiusM: 10,
+      outerRadiusM: 150,
+    });
+
+    const fc = singleZoneToGeoJSONFeatureCollection(
+      zone,
+      gpsByNodeId,
+      nodeExportByNodeId
+    );
+
+    expect(fc.features.length).toBe(3);
+    expect(fc.features[0].geometry?.type).toBe("Polygon");
+    expect(fc.features[1].geometry?.type).toBe("Point");
+    expect(fc.features[1].properties).toMatchObject({
+      zoneId: "z1",
+      nodeId: "n1",
+      name: "North Sensor 1",
+      depth: "Shallow (0–6 in)",
+      lastUpdated: "2026-04-16T10:30:00.000Z",
+    });
+    expect(fc.features[2].properties).toMatchObject({
+      nodeId: "n2",
+      name: "North Sensor 2",
+      depth: null,
+      lastUpdated: null,
+    });
+  });
+
+  it("site export keeps polygon + points ordering and skips nodes without GPS", () => {
+    const pivotZone = baseZone({
+      id: "pivot",
+      name: "Pivot Zone",
+      nodeIds: ["n1", "n3"],
+      isCenterPivot: true,
+      centerLat: 40,
+      centerLng: -100,
+      innerRadiusM: 10,
+      outerRadiusM: 150,
+    });
+    const hullZone = baseZone({
+      id: "hull",
+      name: "Hull Zone",
+      nodeIds: ["n2", "n4", "n5"],
+      isCenterPivot: false,
+    });
+
+    const fc = siteZonesToGeoJSONFeatureCollection(
+      [pivotZone, hullZone],
+      gpsByNodeId,
+      nodeExportByNodeId
+    );
+
+    // pivot polygon + n1 point, then hull polygon + n2 point
+    expect(fc.features.length).toBe(4);
+    expect(fc.features[0].properties.zoneId).toBe("pivot");
+    expect(fc.features[0].geometry?.type).toBe("Polygon");
+    expect(fc.features[1].properties.nodeId).toBe("n1");
+    expect(fc.features[1].geometry?.type).toBe("Point");
+    expect(fc.features[2].properties.zoneId).toBe("hull");
+    expect(fc.features[2].geometry).toBeNull();
+    expect(fc.features[3].properties.nodeId).toBe("n2");
   });
 });
