@@ -43,9 +43,6 @@ export function MoistureTrendsPanel() {
     trend30DayData,
     dryingForecastData,
     forecastChartHasEt,
-    forecastGpsAvailable,
-    forecastEtLoading,
-    forecastEtError,
     forecastMoistureWarnVwc,
     forecastMoistureCritVwc,
     projectedIrrigationLabel,
@@ -74,15 +71,7 @@ export function MoistureTrendsPanel() {
 
   const subtitle =
     chartView === "forecast"
-      ? forecastChartHasEt
-        ? "ET₀-driven projected VWC (dashed) from current readings; ET₀ from Open-Meteo."
-        : forecastGpsAvailable
-          ? forecastEtLoading
-            ? "Loading ET₀ overlay…"
-            : forecastEtError
-              ? `ET overlay unavailable (${forecastEtError}). Moisture projection only.`
-              : "Projected drying trend. ET overlay will appear when forecast data is available."
-          : "Projected drying trend. ET overlay requires sensor GPS saved in Service."
+      ? "Dashed line shows projected VWC based on current readings and ET₀ data from Open-Meteo."
       : chartView === "depth"
         ? "Historical VWC by soil depth for the selected zone or node (one line per depth)."
         : `Historical data • Green shaded area is optimal moisture (${optimalBandRange.max}%–${optimalBandRange.min}%)`;

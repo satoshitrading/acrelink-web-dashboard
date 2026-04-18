@@ -345,13 +345,9 @@ export function FieldMapPanel() {
       <CardHeader className="pb-2">
         <CardTitle className="text-xl font-display">Field map</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Dots use the same moisture colors as charts (e.g. Wet is blue). Zone
-          outlines reflect moisture status (or a legacy custom color if set).
-          Click a zone outline to filter the dashboard by that zone, or a node to
-          filter by that sensor. Use the View control and choose &quot;All zones
-          (aggregated)&quot; to clear the filter. Open a zone popup to jump to
-          moisture trends on the Analytics tab. Use Locate me (top-right on the
-          map) to center on your GPS position.
+          Click a zone or node to filter the dashboard. &quot;All zones
+          (aggregated)&quot; clears the filter. Colors match chart moisture levels.
+          Open a zone popup to jump to Analytics.
         </p>
       </CardHeader>
       <CardContent className="pt-0">
@@ -576,51 +572,6 @@ export function FieldMapPanel() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-3 h-3 rounded-full shrink-0"
-              style={{ backgroundColor: moistureStatusToChartHex("Optimal") }}
-            />{" "}
-            Optimal
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-3 h-3 rounded-full shrink-0"
-              style={{ backgroundColor: moistureStatusToChartHex("Wet") }}
-            />{" "}
-            Wet
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-3 h-3 rounded-full shrink-0"
-              style={{ backgroundColor: moistureStatusToChartHex("Dry") }}
-            />{" "}
-            Dry
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-3 h-3 rounded-full shrink-0"
-              style={{ backgroundColor: moistureStatusToChartHex("Critical: Dry") }}
-            />{" "}
-            Critical dry / saturated
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-3 h-3 rounded-full shrink-0"
-              style={{ backgroundColor: moistureStatusToChartHex("Offline") }}
-            />{" "}
-            Offline
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-3 h-3 rounded-full shrink-0"
-              style={{ backgroundColor: moistureStatusToChartHex("") }}
-            />{" "}
-            Other statuses
-          </span>
-        </div>
       </CardContent>
     </Card>
   );

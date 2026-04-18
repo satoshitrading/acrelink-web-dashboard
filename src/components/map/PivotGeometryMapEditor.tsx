@@ -335,9 +335,6 @@ export function PivotGeometryMapEditor({
             Cancel
           </Button>
         ) : null}
-        <p className="text-xs text-muted-foreground">
-          Drag the blue dot to fine‑tune. Orange / green squares adjust inner and outer radius.
-        </p>
       </div>
 
       <div className="h-[380px] w-full rounded-lg overflow-hidden border border-border z-0">
@@ -466,6 +463,10 @@ export function PivotGeometryMapEditor({
           ) : null}
         </MapContainer>
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        Set Center on Map. Use Orange / Green squares to fine tune.
+      </p>
 
       {activeBasemap && !activeBasemap.isSatellite ? (
         <p className="text-xs text-amber-800 dark:text-amber-200/90">

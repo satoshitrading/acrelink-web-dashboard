@@ -1105,9 +1105,6 @@ export function useDashboardController() {
         : key;
 
     if (colorKey === ZONE_AVERAGE_DATA_KEY) {
-      if (chartView === "depth" || chartView === "forecast") {
-        return DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length];
-      }
       const zs = zoneSummaries.find((z) => z.id === zoneFilter);
       return zs
         ? moistureStatusToChartHex(zs.status)

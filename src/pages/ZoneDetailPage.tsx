@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Loader,
   Download,
+  ChevronDown,
 } from "lucide-react";
 import { auth, database } from "@/lib/firebase";
 import { ref, get } from "firebase/database";
@@ -22,6 +23,11 @@ import { updateSensorMoistureThreshold } from "@/services/zoneService";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useSiteSensorsGps } from "@/hooks/useSiteSensorsGps";
 import { PivotGeometryMapEditor } from "@/components/map/PivotGeometryMapEditor";
 import type { PivotGeometryDraft } from "@/components/map/PivotGeometryMapEditor";
@@ -434,9 +440,9 @@ const ZoneDetailPage = () => {
                 Field map geometry
               </h2>
               <p className="text-sm text-muted-foreground mb-4">
-                By default the map draws a convex hull around nodes assigned to this zone.
-                For center‑pivot fields, switch on and use the map to place the pivot center and
-                adjust the ring; save when it matches your field.
+                By default, zones display a polygon around their nodes. For center-pivot fields,
+                enable the pivot tool to place a center point and adjust the ring radius, then
+                save.
               </p>
               <div className="flex items-center gap-3 mb-4">
                 <Switch
@@ -446,7 +452,7 @@ const ZoneDetailPage = () => {
                   disabled={geomBusy}
                 />
                 <Label htmlFor="zone-pivot-mode" className="cursor-pointer">
-                  Center pivot zone (ring on map)
+                  Center-pivot Zone
                 </Label>
               </div>
               {zone.isCenterPivot ? (
@@ -465,71 +471,76 @@ const ZoneDetailPage = () => {
                       radiusControlsEpoch={pivotRadiusControlsEpoch}
                     />
                   )}
-                  <div className="max-w-lg border border-border rounded-lg px-3 py-3 space-y-3">
-                    <h3 className="text-sm font-medium text-foreground">
-                      Advanced: coordinates and exact meters
-                    </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="geom-lat">Center latitude</Label>
-                          <input
-                            id="geom-lat"
-                            type="text"
-                            inputMode="decimal"
-                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                            value={geomLat}
-                            onChange={(e) => setGeomLat(e.target.value)}
-                            onBlur={bumpPivotRadiusSliders}
-                            placeholder="e.g. 41.1234"
-                          />
+                  <Collapsible className="max-w-lg" defaultOpen={false}>
+                    <div className="rounded-lg border border-border">
+                      <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-left text-sm font-medium text-foreground outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:[&_svg]:rotate-180">
+                        <span>Advanced: coordinates and exact meters</span>
+                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="grid grid-cols-1 gap-3 border-t border-border px-3 pb-3 pt-3 sm:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="geom-lat">Center latitude</Label>
+                            <input
+                              id="geom-lat"
+                              type="text"
+                              inputMode="decimal"
+                              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                              value={geomLat}
+                              onChange={(e) => setGeomLat(e.target.value)}
+                              onBlur={bumpPivotRadiusSliders}
+                              placeholder="e.g. 41.1234"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="geom-lng">Center longitude</Label>
+                            <input
+                              id="geom-lng"
+                              type="text"
+                              inputMode="decimal"
+                              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                              value={geomLng}
+                              onChange={(e) => setGeomLng(e.target.value)}
+                              onBlur={bumpPivotRadiusSliders}
+                              placeholder="e.g. -98.5678"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="geom-inner">Inner radius (m)</Label>
+                            <input
+                              id="geom-inner"
+                              type="text"
+                              inputMode="decimal"
+                              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                              value={geomInner}
+                              onChange={(e) => {
+                                setGeomInner(e.target.value);
+                                setPivotRadiusControlsEpoch((n) => n + 1);
+                              }}
+                              onBlur={() => clampGeomRadiusFieldsToValid()}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="geom-outer">Outer radius (m)</Label>
+                            <input
+                              id="geom-outer"
+                              type="text"
+                              inputMode="decimal"
+                              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                              value={geomOuter}
+                              onChange={(e) => {
+                                setGeomOuter(e.target.value);
+                                setPivotRadiusControlsEpoch((n) => n + 1);
+                              }}
+                              onBlur={() => clampGeomRadiusFieldsToValid()}
+                              placeholder="e.g. 400"
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="geom-lng">Center longitude</Label>
-                          <input
-                            id="geom-lng"
-                            type="text"
-                            inputMode="decimal"
-                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                            value={geomLng}
-                            onChange={(e) => setGeomLng(e.target.value)}
-                            onBlur={bumpPivotRadiusSliders}
-                            placeholder="e.g. -98.5678"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="geom-inner">Inner radius (m)</Label>
-                          <input
-                            id="geom-inner"
-                            type="text"
-                            inputMode="decimal"
-                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                            value={geomInner}
-                            onChange={(e) => {
-                              setGeomInner(e.target.value);
-                              setPivotRadiusControlsEpoch((n) => n + 1);
-                            }}
-                            onBlur={() => clampGeomRadiusFieldsToValid()}
-                            placeholder="0"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="geom-outer">Outer radius (m)</Label>
-                          <input
-                            id="geom-outer"
-                            type="text"
-                            inputMode="decimal"
-                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                            value={geomOuter}
-                            onChange={(e) => {
-                              setGeomOuter(e.target.value);
-                              setPivotRadiusControlsEpoch((n) => n + 1);
-                            }}
-                            onBlur={() => clampGeomRadiusFieldsToValid()}
-                            placeholder="e.g. 400"
-                          />
-                        </div>
-                      </div>
-                  </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
                   <div className="flex flex-wrap items-center gap-3">
                     <Button
                       type="button"
@@ -541,7 +552,7 @@ const ZoneDetailPage = () => {
                     </Button>
                     {!hasValidPivotGeometry(zone) ? (
                       <span className="text-xs text-amber-700 dark:text-amber-300">
-                        Set center and radii on the map (or under Advanced), then save to show the ring on the dashboard map.
+                        Set center and radii on the map (or expand Advanced for exact coordinates), then save to show the ring on the dashboard map.
                       </span>
                     ) : null}
                   </div>
@@ -573,12 +584,6 @@ const ZoneDetailPage = () => {
                     </Button>
                   ) : null}
                 </div>
-                <p className="text-xs text-muted-foreground max-w-xl">
-                  GeoJSON follows RFC 7946 (lon/lat). Pivot zones export as a polygon with a
-                  hole. &quot;Add site nodes&quot; uses GPS only: nodes already in this zone
-                  are skipped; others on the site are added if they lie inside the ring or
-                  convex hull.
-                </p>
               </div>
             </div>
           </CardContent>
@@ -591,9 +596,8 @@ const ZoneDetailPage = () => {
                 Moisture alert thresholds (VWC %)
               </h2>
               <p className="text-sm text-muted-foreground mb-4">
-                Alerts fire when average zone moisture or an individual node drops{" "}
-                <strong>below</strong> the value you set. Used with SMS/email
-                alerts from the server.
+                Alerts trigger when a zone&apos;s average or individual node moisture drops below
+                your set threshold.
               </p>
               <div className="flex flex-col sm:flex-row sm:items-end gap-3 max-w-md">
                 <div className="flex-1 space-y-2">
