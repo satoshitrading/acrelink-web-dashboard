@@ -765,24 +765,24 @@ export function useDashboardController() {
               seasonStart,
               seasonEnd,
               "0%",
-              "—",
-              "—",
-              "—",
-              "—",
-              "—",
-              "—",
-              "—",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
               irrigationMetrics ? String(irrigationMetrics.count) : "0",
-              irrigationMetrics?.lastTimestamp ?? "—",
+              irrigationMetrics?.lastTimestamp ?? "-",
               irrigationMetrics?.avgPreVwc != null
                 ? `${irrigationMetrics.avgPreVwc}%`
-                : "—",
+                : "-",
               irrigationMetrics?.avgPostVwc != null
                 ? `${irrigationMetrics.avgPostVwc}%`
-                : "—",
+                : "-",
               irrigationMetrics?.avgDeltaVwc != null
                 ? `${irrigationMetrics.avgDeltaVwc}%`
-                : "—",
+                : "-",
             ]);
             continue;
           }
@@ -838,19 +838,19 @@ export function useDashboardController() {
             `${maxVWC}%`,
             String(daysBelowDry),
             String(daysOptimal),
-            batteryStart > 0 ? `${batteryStart.toFixed(2)}V` : "—",
-            batteryEnd > 0 ? `${batteryEnd.toFixed(2)}V` : "—",
+            batteryStart > 0 ? `${batteryStart.toFixed(2)}V` : "-",
+            batteryEnd > 0 ? `${batteryEnd.toFixed(2)}V` : "-",
             irrigationMetrics ? String(irrigationMetrics.count) : "0",
-            irrigationMetrics?.lastTimestamp ?? "—",
+            irrigationMetrics?.lastTimestamp ?? "-",
             irrigationMetrics?.avgPreVwc != null
               ? `${irrigationMetrics.avgPreVwc}%`
-              : "—",
+              : "-",
             irrigationMetrics?.avgPostVwc != null
               ? `${irrigationMetrics.avgPostVwc}%`
-              : "—",
+              : "-",
             irrigationMetrics?.avgDeltaVwc != null
               ? `${irrigationMetrics.avgDeltaVwc}%`
-              : "—",
+              : "-",
           ]);
         }
       }
