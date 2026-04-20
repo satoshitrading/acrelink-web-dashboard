@@ -109,7 +109,8 @@ export function ZoneManagementPanel({
           <DialogHeader>
             <DialogTitle>Manage zones</DialogTitle>
             <DialogDescription>
-              Create zones, set names, and assign nodes from the list below. Zone colors on the dashboard reflect live moisture status. Deleting a zone does not remove sensor data — nodes become unassigned.
+              Zone colors reflect live moisture status. Deleting a zone keeps
+              sensor data - nodes become unassigned.
             </DialogDescription>
           </DialogHeader>
 
@@ -122,9 +123,9 @@ export function ZoneManagementPanel({
                 onChange={(e) => setNewName(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                The map uses a convex hull of assigned nodes until center pivot geometry
-                is set. Open the zone from the list below and use the map on the zone page
-                to place the pivot and ring.
+                By default zones display a polygon around assigned nodes. For
+                center-pivot fields, open the zone and use the map to place the
+                center and rings.
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <Switch
@@ -279,7 +280,8 @@ export function ZoneManagementPanel({
           <DialogHeader>
             <DialogTitle>Delete zone?</DialogTitle>
             <DialogDescription>
-              This removes the zone only. Sensors stay in Firebase and become unassigned so you can add them to another zone.
+              This removes the zone only. Sensors become unassigned so you can
+              add them to another zone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

@@ -44,6 +44,7 @@ import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
 import { buildDryingForecastChart } from "@/lib/build-drying-forecast-chart";
 import { useIrrigationEvents } from "@/hooks/useIrrigationEvents";
 import {
+  buildIrrigationRangeMetrics,
   buildZoneIrrigationSummary,
   countSeasonIrrigationEvents,
 } from "@/lib/irrigation-metrics";
@@ -667,10 +668,13 @@ export function useDashboardController() {
     try {
       const start = new Date(seasonStart);
       const end = new Date(seasonEnd);
+      end.setHours(23, 59, 59, 999);
+      const startMs = start.getTime();
+      const endMs = end.getTime();
       // Total days in season range
       const totalDays = Math.max(
         1,
-        Math.round((end.getTime() - start.getTime()) / 86400000) + 1
+        Math.round((endMs - startMs) / 86400000) + 1
       );
 
       // Fetch all gateway/node/packet data
@@ -700,6 +704,11 @@ export function useDashboardController() {
         "Days in Optimal Range",
         "Battery V (Start of Season)",
         "Battery V (End of Season)",
+        "Irrigation Events (Season Range)",
+        "Last Irrigation Timestamp (Season Range)",
+        "Avg Pre-Irrigation VWC %",
+        "Avg Post-Irrigation VWC %",
+        "Avg Irrigation Delta VWC %",
       ]);
 
       interface SeasonPacket {
@@ -713,9 +722,9 @@ export function useDashboardController() {
           continue;
 
         const gatewayData = allGateways[gatewayId];
-        const zoneNameForNode = (nodeId: string) => {
+        const zoneForNode = (nodeId: string) => {
           const z = zones.find((zo) => zo.nodeIds.includes(nodeId));
-          return z?.name ?? "Unassigned";
+          return z ?? null;
         };
 
         for (const nodeKey in gatewayData) {
@@ -742,9 +751,17 @@ export function useDashboardController() {
           }
 
           if (seasonPackets.length === 0) {
+            const zone = zoneForNode(nodeId);
+            const irrigationMetrics = zone
+              ? buildIrrigationRangeMetrics(
+                  eventsByZoneId[zone.id],
+                  startMs,
+                  endMs
+                )
+              : null;
             rows.push([
               nodeId,
-              zoneNameForNode(nodeId),
+              zone?.name ?? "Unassigned",
               seasonStart,
               seasonEnd,
               "0%",
@@ -755,6 +772,17 @@ export function useDashboardController() {
               "—",
               "—",
               "—",
+              irrigationMetrics ? String(irrigationMetrics.count) : "0",
+              irrigationMetrics?.lastTimestamp ?? "—",
+              irrigationMetrics?.avgPreVwc != null
+                ? `${irrigationMetrics.avgPreVwc}%`
+                : "—",
+              irrigationMetrics?.avgPostVwc != null
+                ? `${irrigationMetrics.avgPostVwc}%`
+                : "—",
+              irrigationMetrics?.avgDeltaVwc != null
+                ? `${irrigationMetrics.avgDeltaVwc}%`
+                : "—",
             ]);
             continue;
           }
@@ -794,10 +822,14 @@ export function useDashboardController() {
           const batteryStart = seasonPackets[0].battery;
           const batteryEnd =
             seasonPackets[seasonPackets.length - 1].battery;
+          const zone = zoneForNode(nodeId);
+          const irrigationMetrics = zone
+            ? buildIrrigationRangeMetrics(eventsByZoneId[zone.id], startMs, endMs)
+            : null;
 
           rows.push([
             nodeId,
-            zoneNameForNode(nodeId),
+            zone?.name ?? "Unassigned",
             seasonStart,
             seasonEnd,
             `${uptime}%`,
@@ -808,6 +840,17 @@ export function useDashboardController() {
             String(daysOptimal),
             batteryStart > 0 ? `${batteryStart.toFixed(2)}V` : "—",
             batteryEnd > 0 ? `${batteryEnd.toFixed(2)}V` : "—",
+            irrigationMetrics ? String(irrigationMetrics.count) : "0",
+            irrigationMetrics?.lastTimestamp ?? "—",
+            irrigationMetrics?.avgPreVwc != null
+              ? `${irrigationMetrics.avgPreVwc}%`
+              : "—",
+            irrigationMetrics?.avgPostVwc != null
+              ? `${irrigationMetrics.avgPostVwc}%`
+              : "—",
+            irrigationMetrics?.avgDeltaVwc != null
+              ? `${irrigationMetrics.avgDeltaVwc}%`
+              : "—",
           ]);
         }
       }

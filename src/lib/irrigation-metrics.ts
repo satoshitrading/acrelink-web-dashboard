@@ -54,6 +54,82 @@ export function countSeasonIrrigationEvents(
   return count;
 }
 
+export type IrrigationRangeMetrics = {
+  count: number;
+  lastTimestamp: string | null;
+  avgPreVwc: number | null;
+  avgPostVwc: number | null;
+  avgDeltaVwc: number | null;
+};
+
+function toRounded1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+export function filterIrrigationEventsByDateRange(
+  events: IrrigationEventRow[] | undefined,
+  startMsInclusive: number,
+  endMsInclusive: number
+): IrrigationEventRow[] {
+  if (!events?.length) return [];
+  return events.filter((ev) => {
+    const t = new Date(ev.timestamp).getTime();
+    return !Number.isNaN(t) && t >= startMsInclusive && t <= endMsInclusive;
+  });
+}
+
+export function buildIrrigationRangeMetrics(
+  events: IrrigationEventRow[] | undefined,
+  startMsInclusive: number,
+  endMsInclusive: number
+): IrrigationRangeMetrics {
+  const inRange = filterIrrigationEventsByDateRange(
+    events,
+    startMsInclusive,
+    endMsInclusive
+  );
+  if (inRange.length === 0) {
+    return {
+      count: 0,
+      lastTimestamp: null,
+      avgPreVwc: null,
+      avgPostVwc: null,
+      avgDeltaVwc: null,
+    };
+  }
+
+  let lastTimestamp: string | null = null;
+  let lastMs = -Infinity;
+  let preSum = 0;
+  let postSum = 0;
+  let deltaSum = 0;
+  let validRows = 0;
+
+  for (const ev of inRange) {
+    const ts = new Date(ev.timestamp).getTime();
+    if (!Number.isNaN(ts) && ts > lastMs) {
+      lastMs = ts;
+      lastTimestamp = ev.timestamp;
+    }
+
+    const pre = Number(ev.preVwc);
+    const post = Number(ev.postVwc);
+    if (!Number.isFinite(pre) || !Number.isFinite(post)) continue;
+    preSum += pre;
+    postSum += post;
+    deltaSum += post - pre;
+    validRows += 1;
+  }
+
+  return {
+    count: inRange.length,
+    lastTimestamp,
+    avgPreVwc: validRows ? toRounded1(preSum / validRows) : null,
+    avgPostVwc: validRows ? toRounded1(postSum / validRows) : null,
+    avgDeltaVwc: validRows ? toRounded1(deltaSum / validRows) : null,
+  };
+}
+
 function daysSinceEvent(tsIso: string, now: Date): number {
   const t = new Date(tsIso).getTime();
   if (Number.isNaN(t)) return 0;
