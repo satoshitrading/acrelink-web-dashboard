@@ -1,10 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, TrendingUp } from "lucide-react";
+import { AlertCircle, Droplets } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { useDashboard } from "@/contexts/dashboard/DashboardContext";
 
 export function StressUniformityPanel() {
-  const { criticalAndSaturatedZones, percentageOnTrack, dynamicAlerts } = useDashboard();
+  const {
+    criticalAndSaturatedZones,
+    dynamicAlerts,
+    seasonIrrigationEventCount,
+    irrigationSummary,
+    irrigationLoading,
+    irrigationError,
+  } = useDashboard();
+
+  const { maxDaysSinceLastDetected, perZone } = irrigationSummary;
 
   return (
     <div className="mb-8">
@@ -28,13 +37,40 @@ export function StressUniformityPanel() {
         <Card className="shadow-industrial hover-lift border-2 border-border/50">
           <CardHeader className="pb-3">
             <CardTitle className=" flex-wrap gap-3 text-sm font-display font-semibold text-muted-foreground uppercase tracking-wide flex items-center">
-              <TrendingUp className="h-6 w-6 mr-2 text-primary" />
-              Zones currently on track
+              <Droplets className="h-6 w-6 mr-2 text-primary" />
+              Irrigation recency
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-display font-bold text-primary">{percentageOnTrack}%</div>
-            <p className="text-xs text-muted-foreground mt-1">of acreage currently on track</p>
+          <CardContent className="space-y-3">
+            {irrigationError ? (
+              <p className="text-sm text-destructive">{irrigationError}</p>
+            ) : null}
+            <div>
+              <div className="text-3xl font-display font-bold text-primary">
+                {irrigationLoading ? "…" : maxDaysSinceLastDetected != null ? maxDaysSinceLastDetected : "—"}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Longest gap without detected irrigation (any zone with sensors)
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">{irrigationLoading ? "…" : seasonIrrigationEventCount}</span>
+              {" "}irrigation events this season (calendar year)
+            </p>
+            {perZone.length > 0 ? (
+              <ul className="text-xs text-muted-foreground space-y-1 border-t border-border/50 pt-2">
+                {perZone.map((row) => (
+                  <li key={row.zoneId} className="flex justify-between gap-2">
+                    <span className="truncate font-medium text-foreground">{row.name}</span>
+                    <span className="shrink-0">
+                      {row.daysSince === null ? "No events yet" : `${row.daysSince}d since last`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-muted-foreground">No zones with assigned nodes yet.</p>
+            )}
           </CardContent>
         </Card>
       </div>

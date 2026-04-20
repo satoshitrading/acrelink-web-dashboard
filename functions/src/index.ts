@@ -14,6 +14,10 @@ import {
 } from "./siteAggregation";
 import { getMoistureStatus } from "./sensorRequirementMath";
 import { normalizeToE164 } from "./phoneE164";
+import {
+  collectPacketsForNodes,
+  findLatestIrrigationCandidate,
+} from "./irrigationDetection";
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -323,5 +327,107 @@ export const evaluateMoistureAlerts = onSchedule(
     }
 
     logger.info("evaluateMoistureAlerts completed");
+  }
+);
+
+async function getLastIrrigationEventEndMs(
+  siteId: string,
+  zoneId: string
+): Promise<number> {
+  const ref = db
+    .ref(`irrigation_events/${siteId}/${zoneId}/events`)
+    .orderByChild("timestamp")
+    .limitToLast(1);
+  const snap = await ref.once("value");
+  if (!snap.exists()) return 0;
+  const val = snap.val() as Record<string, { timestamp?: string }>;
+  const keys = Object.keys(val);
+  if (keys.length === 0) return 0;
+  const row = val[keys[0]];
+  const ts = row?.timestamp;
+  if (!ts) return 0;
+  const ms = new Date(String(ts)).getTime();
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
+export const detectIrrigationEvents = onSchedule(
+  {
+    schedule: "every 20 minutes",
+    timeZone: "America/Chicago",
+    memory: "512MiB",
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const srSnap = await db.ref("sensor-readings").once("value");
+    if (!srSnap.exists()) {
+      logger.info("detectIrrigationEvents: no sensor-readings");
+      return;
+    }
+
+    const srRoot = srSnap.val() as Record<string, unknown>;
+    const siteKeys = Object.keys(srRoot).filter((k) => k.startsWith("siteId:"));
+    const nowMs = Date.now();
+    const sinceMs = nowMs - 72 * 60 * 60 * 1000;
+    let eventsWritten = 0;
+
+    for (const siteKey of siteKeys) {
+      const siteId = siteKey.replace(/^siteId:/, "");
+      const gatewaysSnap = await db
+        .ref(`sensor-readings/${siteKey}/gateways`)
+        .once("value");
+      const gateways = gatewaysSnap.exists()
+        ? (gatewaysSnap.val() as Record<string, unknown>)
+        : null;
+
+      const zones = await loadZonesForSite(siteId);
+      const allNodeIds = new Set<string>();
+      for (const z of zones) {
+        for (const nid of z.nodeIds) allNodeIds.add(nid);
+      }
+
+      if (allNodeIds.size === 0) continue;
+
+      const packetsByNode = collectPacketsForNodes(
+        gateways,
+        allNodeIds,
+        sinceMs,
+        nowMs
+      );
+
+      for (const z of zones) {
+        if (z.nodeIds.length < 2) continue;
+
+        const lastEnd = await getLastIrrigationEventEndMs(siteId, z.id);
+        const candidate = findLatestIrrigationCandidate(
+          z.nodeIds,
+          packetsByNode,
+          lastEnd,
+          nowMs
+        );
+        if (!candidate) continue;
+
+        const eventRef = db.ref(
+          `irrigation_events/${siteId}/${z.id}/events`
+        ).push();
+        await eventRef.set({
+          timestamp: candidate.timestampIso,
+          preVwc: candidate.preVwc,
+          postVwc: candidate.postVwc,
+          siteId,
+          zoneId: z.id,
+          windowMinutes: candidate.windowMinutes,
+          nodeCount: candidate.nodeCount,
+          createdAt: new Date().toISOString(),
+        });
+        eventsWritten++;
+        logger.info("detectIrrigationEvents: wrote event", {
+          siteId,
+          zoneId: z.id,
+          timestamp: candidate.timestampIso,
+        });
+      }
+    }
+
+    logger.info("detectIrrigationEvents completed", { eventsWritten });
   }
 );

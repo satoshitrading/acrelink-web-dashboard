@@ -42,6 +42,11 @@ import { labelForDepthIndex } from "@/lib/depth-label-utils";
 import { useToast } from "@/hooks/use-toast";
 import { moistureStatusToChartHex } from "@/lib/moistureStatusPalette";
 import { buildDryingForecastChart } from "@/lib/build-drying-forecast-chart";
+import { useIrrigationEvents } from "@/hooks/useIrrigationEvents";
+import {
+  buildZoneIrrigationSummary,
+  countSeasonIrrigationEvents,
+} from "@/lib/irrigation-metrics";
 
 export type DashboardTabValue = "overview" | "analytics" | "reports";
 
@@ -128,6 +133,22 @@ export function useDashboardController() {
     assignNodesToZone,
     loading: zonesDataLoading,
   } = useZones(userSiteId);
+
+  const {
+    loading: irrigationLoading,
+    error: irrigationError,
+    eventsByZoneId,
+  } = useIrrigationEvents(userSiteId);
+
+  const seasonIrrigationEventCount = useMemo(
+    () => countSeasonIrrigationEvents(eventsByZoneId),
+    [eventsByZoneId]
+  );
+
+  const irrigationSummary = useMemo(
+    () => buildZoneIrrigationSummary(zones, eventsByZoneId),
+    [zones, eventsByZoneId]
+  );
 
   const sensorDisplayNames = useSensorDisplayNames(userSiteId);
   const { warn: sensorMoistureWarnByNode, crit: sensorMoistureCritByNode } = useSiteSensorThresholds(userSiteId);
@@ -601,16 +622,6 @@ export function useDashboardController() {
     (z) =>
       z.status === "Critical: Dry" || z.status === "Critical: Saturated"
   );
-  const zoneOnTrack = zoneSummariesForView.filter(
-    (z) =>
-      z.status !== "Critical: Dry" && z.status !== "Critical: Saturated"
-  );
-  const percentageOnTrack =
-    zoneSummariesForView.length > 0
-      ? Math.round(
-        (zoneOnTrack.length / zoneSummariesForView.length) * 100
-      )
-      : 0;
   const avgMoisture =
     zoneSummariesForView.length > 0
       ? Math.round(
@@ -1287,8 +1298,10 @@ export function useDashboardController() {
     refreshData,
     lowMoistureZones,
     criticalAndSaturatedZones,
-    zoneOnTrack,
-    percentageOnTrack,
+    irrigationLoading,
+    irrigationError,
+    seasonIrrigationEventCount,
+    irrigationSummary,
     avgMoisture,
     waterSavedYTD,
     estimatedSavings,
