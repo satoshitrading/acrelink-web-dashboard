@@ -8,6 +8,8 @@ export function ChartTooltip({ active, payload, label }: {
     const sortedPayload = [...payload].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
     return (
       <div
+        translate="no"
+        className="notranslate"
         style={{
           backgroundColor: "hsl(var(--card))",
           border: "2px solid hsl(var(--border))",

@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { TranslationErrorBoundary } from "@/components/TranslationErrorBoundary";
 import Dashboard from "./pages/Dashboard";
 import Service from "./pages/Service";
 import Auth from "./pages/Auth";
@@ -25,7 +26,13 @@ const App = () => (
       <Toaster />
       <Sonner />
       {/* ---- React-Toastify Toast Container ---- */}
-      <ToastContainer position="top-right" autoClose={2000} />
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        className="notranslate"
+        toastClassName="notranslate"
+      />
+      <TranslationErrorBoundary>
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
@@ -72,6 +79,7 @@ const App = () => (
           />
         </Routes>
       </BrowserRouter>
+      </TranslationErrorBoundary>
     </TooltipProvider>
   </QueryClientProvider>
 );

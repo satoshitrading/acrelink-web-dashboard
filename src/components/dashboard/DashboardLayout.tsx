@@ -65,19 +65,31 @@ export function DashboardLayout() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+          <TabsContent
+            value="overview"
+            forceMount
+            className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=inactive]:hidden"
+          >
             <FieldStatusPanel />
             <ZoneStatusPanel />
             <FieldMapPanel />
             <DashboardRefreshBar />
           </TabsContent>
 
-          <TabsContent value="analytics" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+          <TabsContent
+            value="analytics"
+            forceMount
+            className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=inactive]:hidden"
+          >
             <MoistureTrendsPanel />
             <StressUniformityPanel />
           </TabsContent>
 
-          <TabsContent value="reports" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+          <TabsContent
+            value="reports"
+            forceMount
+            className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=inactive]:hidden"
+          >
             <RoiReportingPanel />
             <SystemHealthPanel />
           </TabsContent>

@@ -20,7 +20,7 @@ export function DashboardNav() {
   } = useDashboard();
 
   return (
-    <nav className="bg-card border-b-2 border-border/50 sticky top-0 z-50 shadow-industrial">
+    <nav translate="no" className="notranslate bg-card border-b-2 border-border/50 sticky top-0 z-50 shadow-industrial">
       <div className="max-w-7xl mx-auto px-6 py-4 flex flex-wrap lg:gap-0 gap-4 items-center justify-between">
         <div className="flex items-center gap-4">
           <button
